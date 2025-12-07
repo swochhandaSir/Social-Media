@@ -24,10 +24,19 @@ function CreatePost() {
         formData.append("content", newPost.content);
         formData.append("file", newPost.file);
 
+        const token = localStorage.getItem('token');
+        const config = {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': token
+            }
+        };
+
         axios
-            .post("http://localhost:5000/api/posts", formData)
+            .post("http://localhost:5000/api/posts", formData, config)
             .then((response) => {
                 setNewPost({ title: "", content: "", file: null });
+                alert("Post created successfully!");
             })
             .catch((error) => console.error("Error creating post:", error));
     };
