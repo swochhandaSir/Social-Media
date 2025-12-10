@@ -7,7 +7,11 @@ import CreatePost from './CreatePost';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Profile from './components/Profile';
+import Messages from './components/Messages';
 import PrivateRoute from './components/PrivateRoute';
+import SearchBar from './components/SearchBar';
+import { SocketProvider } from './contexts/SocketContext';
+import GlobalCallListener from './components/GlobalCallListener';
 import './App.css';
 
 function AppContent() {
@@ -33,18 +37,32 @@ function AppContent() {
               <Link to="/create">Create Post</Link>
             </li>
             <li>
+              <Link to="/messages">Messages</Link>
+            </li>
+            <li>
               <Link to="/profile">Profile</Link>
             </li>
             <li>
               <button onClick={handleLogout} className="logout-btn">Logout</button>
             </li>
           </ul>
+          <SearchBar />
         </nav>
       )}
       <Routes>
         <Route path="/create" element={
           <PrivateRoute>
             <CreatePost />
+          </PrivateRoute>
+        } />
+        <Route path="/messages" element={
+          <PrivateRoute>
+            <Messages />
+          </PrivateRoute>
+        } />
+        <Route path="/profile/:userId" element={
+          <PrivateRoute>
+            <Profile />
           </PrivateRoute>
         } />
         <Route path="/profile" element={
@@ -67,7 +85,10 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AppContent />
+      <SocketProvider>
+        <GlobalCallListener />
+        <AppContent />
+      </SocketProvider>
     </Router>
   );
 }

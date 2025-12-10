@@ -1,18 +1,23 @@
 import React from 'react';
+import './SkeletonPost.css';
 
 const SkeletonPost = () => {
     return (
-        <div className="post skeleton-wrapper">
-            <div className="skeleton-header">
-                <div className="skeleton skeleton-title"></div>
-                <div className="skeleton skeleton-meta"></div>
+        <div className="post skeleton-post" aria-hidden="true">
+            <div className="post-header placeholder-glow">
+                <span className="placeholder col-4"></span>
             </div>
-            <div className="skeleton skeleton-text"></div>
-            <div className="skeleton skeleton-text"></div>
-            <div className="skeleton skeleton-media"></div>
-            <div className="skeleton-actions">
-                <div className="skeleton skeleton-btn"></div>
-                <div className="skeleton skeleton-btn"></div>
+            <div className="post-content placeholder-glow">
+                <span className="placeholder col-7"></span>
+                <span className="placeholder col-4"></span>
+                <span className="placeholder col-4"></span>
+                <span className="placeholder col-6"></span>
+                <span className="placeholder col-8"></span>
+            </div>
+            <div className="skeleton-media placeholder"></div>
+            <div className="post-actions placeholder-glow">
+                <span className="placeholder col-3"></span>
+                <span className="placeholder col-3"></span>
             </div>
         </div>
     );

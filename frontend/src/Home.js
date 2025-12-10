@@ -81,12 +81,7 @@ function Home() {
             ) : (
                 posts.map((post) => (
                     <div key={post._id} className="post">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3>{post.title}</h3>
-                            <span style={{ fontSize: '0.9rem', color: '#666' }}>
-                                Posted by: <strong>{post.author && post.author.userName ? post.author.userName : 'Unknown'}</strong>
-                            </span>
-                        </div>
+                        <h3>{post.author && post.author.userName ? post.author.userName : 'Unknown'}</h3>
                         <p>{post.content}</p>
                         {post.file && (
                             <div>
@@ -118,16 +113,16 @@ function Home() {
                                 <span>💬</span> {post.comments.length} Comments
                             </button>
                             {post.author && post.author._id === userId && (
-                                <button onClick={() => handleDelete(post._id)} style={{ color: 'red', marginLeft: 'auto' }}>
-                                    Delete
-                                </button>
+                                <i className="bi bi-trash3-fill" onClick={() => handleDelete(post._id)} style={{ color: 'red', marginLeft: 'auto', cursor: 'pointer' }}></i>
                             )}
                         </div>
 
                         <div className="comments-section">
                             <ul>
                                 {post.comments.map((comment, index) => (
-                                    <li key={index}>{comment.text}</li>
+                                    <li key={index}>
+                                        <strong>{comment.author?.userName || 'Unknown'}:</strong> {comment.text}
+                                    </li>
                                 ))}
                             </ul>
 

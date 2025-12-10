@@ -1,0 +1,71 @@
+.skeleton-conversation {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+
+.skeleton-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.skeleton-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.skeleton-name {
+    height: 18px;
+    border-radius: 4px;
+}
+
+.skeleton-time {
+    height: 12px;
+    border-radius: 4px;
+}
+
+.skeleton-message {
+    height: 14px;
+    border-radius: 4px;
+}
+
+/* Bootstrap Placeholder Styles (reused) */
+.placeholder {
+    display: inline-block;
+    min-height: 1em;
+    vertical-align: middle;
+    cursor: wait;
+    background-color: currentcolor;
+    opacity: 0.5;
+}
+
+.placeholder.col-2 {
+    width: 16.66%;
+}
+
+.placeholder.col-4 {
+    width: 33.33%;
+}
+
+.placeholder.col-8 {
+    width: 66.66%;
+}
+
+/* Glow Animation */
+.placeholder-glow .placeholder {
+    animation: placeholder-glow 2s ease-in-out infinite;
+}

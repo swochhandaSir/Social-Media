@@ -1,6 +1,7 @@
 const User = require('../models/Users');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { indexUser } = require('../config/elasticsearch');
 
 exports.register = async (req, res) => {
     try {
@@ -24,6 +25,14 @@ exports.register = async (req, res) => {
         });
 
         await user.save();
+
+        // Index user in Elasticsearch
+        try {
+            await indexUser(user);
+        } catch (esError) {
+            console.error('Error indexing user in Elasticsearch:', esError);
+            // Don't fail registration if Elasticsearch indexing fails
+        }
 
         // Check if JWT_SECRET is defined
         if (!process.env.JWT_SECRET) {

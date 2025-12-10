@@ -1,0 +1,84 @@
+.skeleton-post {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.post-header {
+    margin-bottom: 15px;
+}
+
+.post-content {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.skeleton-media {
+    width: 100%;
+    height: 300px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.post-actions {
+    display: flex;
+    gap: 15px;
+}
+
+/* Bootstrap Placeholder Styles */
+.placeholder {
+    display: inline-block;
+    min-height: 1em;
+    vertical-align: middle;
+    cursor: wait;
+    background-color: currentcolor;
+    opacity: 0.5;
+}
+
+.placeholder.col-3 {
+    width: 25%;
+}
+
+.placeholder.col-4 {
+    width: 33.33%;
+}
+
+.placeholder.col-6 {
+    width: 50%;
+}
+
+.placeholder.col-7 {
+    width: 58.33%;
+}
+
+.placeholder.col-8 {
+    width: 66.67%;
+}
+
+/* Glow Animation */
+.placeholder-glow .placeholder {
+    animation: placeholder-glow 2s ease-in-out infinite;
+}
+
+@keyframes placeholder-glow {
+    50% {
+        opacity: 0.2;
+    }
+}
+
+/* Wave Animation (alternative) */
+.placeholder-wave {
+    mask-image: linear-gradient(130deg, #000 55%, rgba(0, 0, 0, 0.8) 75%, #000 95%);
+    mask-size: 200% 100%;
+    animation: placeholder-wave 2s linear infinite;
+}
+
+@keyframes placeholder-wave {
+    100% {
+        mask-position: -200% 0%;
+    }
+}

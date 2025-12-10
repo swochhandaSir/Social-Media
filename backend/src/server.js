@@ -1,6 +1,8 @@
 require("dotenv").config();
 
 const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -9,6 +11,10 @@ const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
 const User = require('./models/Users');
+const Post = require('./models/Post');
+const Comment = require('./models/Comment');
+const Message = require('./models/Message');
+const { initializeIndex, searchUsers, indexUser } = require('./config/elasticsearch');
 
 const fs = require('fs');
 
@@ -16,7 +22,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Ensure uploads directory exists
-const uploadDir = path.join(__dirname, 'uploads');
+const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
 }
@@ -25,26 +31,18 @@ app.use(cors());
 app.use('/uploads', express.static(uploadDir));
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
+    destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
 
 const upload = multer({ storage: storage });
 
 mongoose.connect(process.env.DB_URL)
-    .then(() => console.log('MongoDB connected'))
+    .then(() => {
+        console.log('MongoDB connected');
+        initializeIndex().catch(err => console.error('Elasticsearch initialization error:', err));
+    })
     .catch(err => console.log(err));
-
-const PostSchema = new mongoose.Schema({
-    title: String,
-    content: String,
-    file: String,
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }],
-    comments: [{ text: String }],
-    author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
-}, { timestamps: true });
-
-const Post = mongoose.model('Post', PostSchema);
 
 app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
@@ -52,7 +50,10 @@ app.use('/api/auth', authRoutes);
 // Get all posts
 app.get('/api/posts', async (req, res) => {
     try {
-        const posts = await Post.find().populate('author', 'userName').sort({ createdAt: -1 });
+        const posts = await Post.find()
+            .populate('author', 'userName')
+            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } })
+            .sort({ createdAt: -1 });
         res.json(posts);
     } catch (err) {
         res.status(500).json({ error: 'Internal Server Error' });
@@ -62,11 +63,11 @@ app.get('/api/posts', async (req, res) => {
 // Create a post
 app.post('/api/posts', authMiddleware, upload.single('file'), async (req, res) => {
     try {
-        const { title, content } = req.body;
+        const { content } = req.body;
         const file = req.file ? req.file.filename : undefined;
 
-        if (!title || !content) {
-            return res.status(400).json({ error: 'Title and content are required' });
+        if (!content) {
+            return res.status(400).json({ error: 'Content is required' });
         }
 
         const post = new Post({
@@ -89,17 +90,22 @@ app.post('/api/posts/like/:postId', authMiddleware, async (req, res) => {
     try {
         const postId = req.params.postId;
         const userId = req.user.userId;
-        const post = await Post.findById(postId);
+        const post = await Post.findById(postId)
+            .populate('author', 'userName')
+            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } });
 
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        const index = post.likes.indexOf(userId);
-        if (index === -1) {
-            post.likes.push(userId); // Like
+        // Check if user already liked the post
+        const likeIndex = post.likes.indexOf(userId);
+        if (likeIndex === -1) {
+            // User hasn't liked it, so add like
+            post.likes.push(userId);
         } else {
-            post.likes.splice(index, 1); // Unlike
+            // User already liked it, so remove like (unlike)
+            post.likes.splice(likeIndex, 1);
         }
 
         await post.save();
@@ -115,16 +121,31 @@ app.post('/api/posts/comment/:postId', authMiddleware, async (req, res) => {
     try {
         const postId = req.params.postId;
         const { text } = req.body;
-        const post = await Post.findById(postId);
+        const userId = req.user.userId;
 
+        const post = await Post.findById(postId);
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        post.comments.push({ text });
+        // Create new comment document
+        const comment = new Comment({
+            text,
+            author: userId,
+            post: postId
+        });
+        await comment.save();
+
+        // Add comment reference to post
+        post.comments.push(comment._id);
         await post.save();
 
-        res.json(post);
+        // Return populated post
+        const updatedPost = await Post.findById(postId)
+            .populate('author', 'userName')
+            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } });
+
+        res.json(updatedPost);
     } catch (err) {
         console.error('error adding comment', err);
         res.status(500).json({ error: err.message });
@@ -162,7 +183,9 @@ app.get('/api/users/profile/:userId', authMiddleware, async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        const posts = await Post.find({ author: userId }).sort({ createdAt: -1 });
+        const posts = await Post.find({ author: userId })
+            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } })
+            .sort({ createdAt: -1 });
         res.json({ user, posts });
     } catch (err) {
         console.error('error fetching profile', err);
@@ -170,6 +193,251 @@ app.get('/api/users/profile/:userId', authMiddleware, async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+// Search for users
+app.get('/api/users/search', authMiddleware, async (req, res) => {
+    try {
+        const { q } = req.query;
+
+        if (!q || q.trim().length === 0) {
+            return res.json([]);
+        }
+
+        // Search using Elasticsearch
+        const results = await searchUsers(q);
+
+        // Get full user details from MongoDB
+        const userIds = results.map(r => r.id);
+        const users = await User.find({ _id: { $in: userIds } }).select('-password');
+
+        // Sort by Elasticsearch score
+        const sortedUsers = results.map(result => {
+            const user = users.find(u => u._id.toString() === result.id);
+            return user ? { ...user.toObject(), score: result.score } : null;
+        }).filter(u => u !== null);
+
+        res.json(sortedUsers);
+    } catch (err) {
+        console.error('error searching users', err);
+        // Fallback to MongoDB search if Elasticsearch fails
+        try {
+            const { q } = req.query;
+            const users = await User.find({
+                $or: [
+                    { userName: { $regex: q, $options: 'i' } },
+                    { email: { $regex: q, $options: 'i' } }
+                ]
+            }).select('-password').limit(10);
+            res.json(users);
+        } catch (fallbackErr) {
+            res.status(500).json({ error: 'Search failed' });
+        }
+    }
+});
+
+
+// Get messages for a conversation
+app.get('/api/messages/:userId', authMiddleware, async (req, res) => {
+    try {
+        const currentUserId = req.user.userId;
+        const otherUserId = req.params.userId;
+
+        // Create conversation ID (consistent ordering)
+        const conversationId = [currentUserId, otherUserId].sort().join('_');
+
+        const messages = await Message.find({ conversationId })
+            .populate('sender', 'userName')
+            .populate('receiver', 'userName')
+            .sort({ createdAt: 1 })
+            .limit(100);
+
+        res.json(messages);
+    } catch (err) {
+        console.error('error fetching messages', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Mark messages as read
+app.put('/api/messages/read/:userId', authMiddleware, async (req, res) => {
+    try {
+        const currentUserId = req.user.userId;
+        const otherUserId = req.params.userId;
+        const conversationId = [currentUserId, otherUserId].sort().join('_');
+
+        await Message.updateMany(
+            { conversationId, receiver: currentUserId, read: false },
+            { read: true }
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('error marking messages as read', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get conversation list
+app.get('/api/conversations', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const messages = await Message.aggregate([
+            {
+                $match: {
+                    $or: [{ sender: new mongoose.Types.ObjectId(userId) }, { receiver: new mongoose.Types.ObjectId(userId) }]
+                }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+                $group: {
+                    _id: '$conversationId',
+                    lastMessage: { $first: '$$ROOT' }
+                }
+            }
+        ]);
+
+        const conversations = await Promise.all(messages.map(async (conv) => {
+            const msg = conv.lastMessage;
+            const otherUserId = msg.sender.toString() === userId ? msg.receiver : msg.sender;
+            const otherUser = await User.findById(otherUserId).select('userName email');
+
+            const unreadCount = await Message.countDocuments({
+                conversationId: conv._id,
+                receiver: userId,
+                read: false
+            });
+
+            return {
+                conversationId: conv._id,
+                otherUser,
+                lastMessage: msg,
+                unreadCount
+            };
+        }));
+
+        res.json(conversations);
+    } catch (err) {
+        console.error('error fetching conversations', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Setup Socket.IO with CORS
+const io = socketIO(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"]
+    }
+});
+
+// Store online users and their socket IDs
+const onlineUsers = new Map();
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
+
+    // User joins
+    socket.on('user-online', (userId) => {
+        onlineUsers.set(userId, socket.id);
+        console.log(`User ${userId} is online`);
+        io.emit('user-status', { userId, online: true });
+    });
+
+    // Send message
+    socket.on('send-message', async (data) => {
+        try {
+            const { sender, receiver, text } = data;
+            const conversationId = [sender, receiver].sort().join('_');
+
+            const message = new Message({
+                sender,
+                receiver,
+                text,
+                conversationId
+            });
+
+            await message.save();
+            await message.populate('sender', 'userName');
+            await message.populate('receiver', 'userName');
+
+            // Send to receiver if online
+            const receiverSocketId = onlineUsers.get(receiver);
+            if (receiverSocketId) {
+                io.to(receiverSocketId).emit('receive-message', message);
+            }
+
+            // Send back to sender for confirmation
+            socket.emit('message-sent', message);
+        } catch (err) {
+            console.error('Error sending message:', err);
+            socket.emit('message-error', { error: err.message });
+        }
+    });
+
+    // WebRTC signaling
+    socket.on('call-user', (data) => {
+        const { userToCall, signalData, from, name } = data;
+        const receiverSocketId = onlineUsers.get(userToCall);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('incoming-call', {
+                signal: signalData,
+                from,
+                name
+            });
+        }
+    });
+
+    socket.on('answer-call', (data) => {
+        const { to, signal } = data;
+        const callerSocketId = onlineUsers.get(to);
+        if (callerSocketId) {
+            io.to(callerSocketId).emit('call-accepted', signal);
+        }
+    });
+
+    socket.on('reject-call', (data) => {
+        const { to } = data;
+        const callerSocketId = onlineUsers.get(to);
+        if (callerSocketId) {
+            io.to(callerSocketId).emit('call-rejected');
+        }
+    });
+
+    socket.on('end-call', (data) => {
+        const { to } = data;
+        const otherSocketId = onlineUsers.get(to);
+        if (otherSocketId) {
+            io.to(otherSocketId).emit('call-ended');
+        }
+    });
+
+    // Typing indicator
+    socket.on('typing', (data) => {
+        const { to } = data;
+        const receiverSocketId = onlineUsers.get(to);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('user-typing', data);
+        }
+    });
+
+    // Disconnect
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+        // Find and remove user from online users
+        for (let [userId, socketId] of onlineUsers.entries()) {
+            if (socketId === socket.id) {
+                onlineUsers.delete(userId);
+                io.emit('user-status', { userId, online: false });
+                break;
+            }
+        }
+    });
+});
+
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

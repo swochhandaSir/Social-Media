@@ -1,0 +1,72 @@
+.skeleton-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 30px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+}
+
+.skeleton-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+}
+
+.skeleton-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+
+.skeleton-name {
+    height: 32px;
+    border-radius: 4px;
+}
+
+.skeleton-email {
+    height: 18px;
+    border-radius: 4px;
+}
+
+.skeleton-date {
+    height: 14px;
+    border-radius: 4px;
+}
+
+/* Bootstrap Placeholder Styles (reused if not globally available) */
+.placeholder {
+    display: inline-block;
+    min-height: 1em;
+    vertical-align: middle;
+    cursor: wait;
+    background-color: currentcolor;
+    opacity: 0.5;
+}
+
+.placeholder.col-4 {
+    width: 33.33%;
+}
+
+.placeholder.col-5 {
+    width: 41.66%;
+}
+
+.placeholder.col-6 {
+    width: 50%;
+}
+
+/* Glow Animation */
+.placeholder-glow .placeholder {
+    animation: placeholder-glow 2s ease-in-out infinite;
+}
+
+@keyframes placeholder-glow {
+    50% {
+        opacity: 0.2;
+    }
+}
