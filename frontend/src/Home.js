@@ -1,8 +1,8 @@
-// Home.js
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import SkeletonPost from "./components/SkeletonPost";
+import PostCard from "./components/PostCard";
+import "./Home.css";
 
 function Home() {
     const [commentInput, setCommentInput] = useState({});
@@ -53,6 +53,7 @@ function Home() {
     };
 
     const handleAddComment = (postId, commentText) => {
+        if (!commentText) return;
         const token = localStorage.getItem('token');
         axios
             .post(`http://localhost:5000/api/posts/comment/${postId}`, {
@@ -65,13 +66,13 @@ function Home() {
                     post._id === postId ? response.data : post
                 );
                 setPosts(updatedPosts);
+                setCommentInput({ ...commentInput, [postId]: "" });
             })
             .catch((error) => console.error("Error adding comment:", error));
     };
 
     return (
         <div className="home">
-            <h2>Recent Posts</h2>
             {loading ? (
                 <>
                     <SkeletonPost />
@@ -80,73 +81,16 @@ function Home() {
                 </>
             ) : (
                 posts.map((post) => (
-                    <div key={post._id} className="post">
-                        <h3>{post.author && post.author.userName ? post.author.userName : 'Unknown'}</h3>
-                        <p>{post.content}</p>
-                        {post.file && (
-                            <div>
-                                {post.file.includes(".mp4") ? (
-                                    <video width="320" height="240" controls>
-                                        <source
-                                            src={
-                                                `http://localhost:5000/uploads/${post.file}`
-                                            }
-                                            type="video/mp4"
-                                        />
-                                        Your browser does not support the video tag.
-                                    </video>
-                                ) : (
-                                    <img
-                                        src={
-                                            `http://localhost:5000/uploads/${post.file}`
-                                        }
-                                        alt="Post Media"
-                                    />
-                                )}
-                            </div>
-                        )}
-                        <div className="post-actions">
-                            <button onClick={() => handleLike(post._id)}>
-                                <span>{(post.likes && post.likes.includes(userId)) ? '❤️' : '🤍'}</span> {post.likes ? post.likes.length : 0} Likes
-                            </button>
-                            <button onClick={() => document.getElementById(`comment-input-${post._id}`).focus()}>
-                                <span>💬</span> {post.comments.length} Comments
-                            </button>
-                            {post.author && post.author._id === userId && (
-                                <i className="bi bi-trash3-fill" onClick={() => handleDelete(post._id)} style={{ color: 'red', marginLeft: 'auto', cursor: 'pointer' }}></i>
-                            )}
-                        </div>
-
-                        <div className="comments-section">
-                            <ul>
-                                {post.comments.map((comment, index) => (
-                                    <li key={index}>
-                                        <strong>{comment.author?.userName || 'Unknown'}:</strong> {comment.text}
-                                    </li>
-                                ))}
-                            </ul>
-
-                            <div className="comment-form">
-                                <input
-                                    id={`comment-input-${post._id}`}
-                                    type="text"
-                                    placeholder="Add a comment..."
-                                    className="comment-input"
-                                    value={commentInput[post._id] || ""}
-                                    onChange={(e) => setCommentInput({ ...commentInput, [post._id]: e.target.value })}
-                                />
-                                <button
-                                    onClick={() => {
-                                        handleAddComment(post._id, commentInput[post._id]);
-                                        setCommentInput({ ...commentInput, [post._id]: "" });
-                                    }}
-                                    className="comment-button"
-                                >
-                                    Post
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <PostCard
+                        key={post._id}
+                        post={post}
+                        userId={userId}
+                        onLike={handleLike}
+                        onDelete={handleDelete}
+                        onAddComment={handleAddComment}
+                        commentInput={commentInput[post._id]}
+                        setCommentInput={(value) => setCommentInput({ ...commentInput, [post._id]: value })}
+                    />
                 ))
             )}
         </div>

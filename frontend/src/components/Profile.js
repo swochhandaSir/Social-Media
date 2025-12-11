@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import SkeletonPost from './SkeletonPost';
 import SkeletonProfileHeader from './SkeletonProfileHeader';
+import PostCard from './PostCard';
 import Chat from './Chat';
 import VideoCall from './VideoCall';
 import { useSocket } from '../contexts/SocketContext';
@@ -12,13 +12,15 @@ function Profile() {
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('posts');
     const [showChat, setShowChat] = useState(false);
     const [showVideoCall, setShowVideoCall] = useState(false);
+    const [commentInput, setCommentInput] = useState({});
+
     const { userId: profileUserId } = useParams();
     const currentUserId = localStorage.getItem('userId');
     const { onlineUsers } = useSocket();
 
-    // If no userId in params, show current user's profile
     const targetUserId = profileUserId || currentUserId;
     const isOwnProfile = targetUserId === currentUserId;
 
@@ -44,17 +46,55 @@ function Profile() {
         }
     }, [targetUserId]);
 
-    const handleDelete = async (postId) => {
+    const handleLike = (postId) => {
+        const token = localStorage.getItem('token');
+        axios
+            .post(`http://localhost:5000/api/posts/like/${postId}`, {}, {
+                headers: { 'Authorization': token }
+            })
+            .then((response) => {
+                const updatedPosts = posts.map((post) =>
+                    post._id === postId ? response.data : post
+                );
+                setPosts(updatedPosts);
+            })
+            .catch((error) => console.error("Error liking post:", error));
+    };
+
+    const handleDelete = (postId) => {
         if (!window.confirm("Are you sure you want to delete this post?")) return;
-        try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/posts/${postId}`, {
-                headers: { Authorization: token }
-            });
-            setPosts(posts.filter(post => post._id !== postId));
-        } catch (err) {
-            console.error("Error deleting post:", err);
-        }
+        const token = localStorage.getItem('token');
+        axios
+            .delete(`http://localhost:5000/api/posts/${postId}`, {
+                headers: { 'Authorization': token }
+            })
+            .then(() => {
+                setPosts(posts.filter((post) => post._id !== postId));
+            })
+            .catch((error) => console.error("Error deleting post:", error));
+    };
+
+    const handleAddComment = (postId, commentText) => {
+        if (!commentText) return;
+        const token = localStorage.getItem('token');
+        axios
+            .post(`http://localhost:5000/api/posts/comment/${postId}`, {
+                text: commentText,
+            }, {
+                headers: { 'Authorization': token }
+            })
+            .then((response) => {
+                const updatedPosts = posts.map((post) =>
+                    post._id === postId ? response.data : post
+                );
+                setPosts(updatedPosts);
+                setCommentInput({ ...commentInput, [postId]: "" });
+            })
+            .catch((error) => console.error("Error adding comment:", error));
+    };
+
+    const isUserOnline = () => {
+        return onlineUsers.has(targetUserId);
     };
 
     const openChat = () => {
@@ -67,27 +107,12 @@ function Profile() {
         setShowChat(false);
     };
 
-    const closeChat = () => {
-        setShowChat(false);
-    };
-
-    const closeVideoCall = () => {
-        setShowVideoCall(false);
-    };
-
-    const isUserOnline = () => {
-        return onlineUsers.has(targetUserId);
-    };
-
     if (loading) {
         return (
             <div className="profile-page">
                 <SkeletonProfileHeader />
-                <div className="profile-posts-section">
-                    <h3>Posts</h3>
-                    <SkeletonPost />
-                    <SkeletonPost />
-                    <SkeletonPost />
+                <div className="posts-list">
+                    {/* Skeleton posts could be added here if needed, but header is main part */}
                 </div>
             </div>
         );
@@ -97,68 +122,140 @@ function Profile() {
 
     return (
         <div className="profile-page">
-            <div className="profile-header">
-                <div className="profile-avatar-large">
-                    {user.userName.charAt(0).toUpperCase()}
+            {/* Banner */}
+            <div className="profile-banner"></div>
+
+            <div className="profile-header-content">
+                {/* Avatar */}
+                <div className="profile-avatar-wrapper">
+                    <div className="profile-avatar-large">
+                        {user.userName.charAt(0).toUpperCase()}
+                    </div>
                     {!isOwnProfile && isUserOnline() && (
                         <span className="online-indicator-large"></span>
                     )}
                 </div>
-                <div className="profile-info">
-                    <h2>{user.userName}</h2>
-                    <p className="profile-email">{user.email}</p>
-                    <p className="profile-member-since">
-                        Member since: {new Date(user.createdAt || Date.now()).toLocaleDateString()}
+
+                {/* Info & Actions */}
+                <div className="profile-details">
+                    <div className="profile-top-row">
+                        <div className="profile-name-section">
+                            <h2>{user.userName}</h2>
+                            <p className="profile-username">@{user.userName.toLowerCase().replace(/\s+/g, '')}</p>
+                        </div>
+                        <div className="profile-actions">
+                            {isOwnProfile ? (
+                                <>
+                                    <button className="btn-ghost" style={{ border: '1px solid #e2e8f0' }}>
+                                        <i className="bi bi-pencil"></i> Edit Profile
+                                    </button>
+                                    <button className="btn-ghost" style={{ border: '1px solid #e2e8f0' }}>
+                                        <i className="bi bi-gear"></i>
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={openChat} className="btn-ghost" style={{ border: '1px solid #e2e8f0' }}>
+                                        <i className="bi bi-chat-dots"></i> Message
+                                    </button>
+                                    <button onClick={openVideoCall} className="btn-ghost" style={{ border: '1px solid #e2e8f0' }}>
+                                        <i className="bi bi-camera-video"></i> Call
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    <p className="profile-bio">
+                        Member since {new Date(user.createdAt || Date.now()).toLocaleDateString()}
                     </p>
-                    {!isOwnProfile && isUserOnline() && (
-                        <span className="online-status">🟢 Online</span>
-                    )}
+
+                    {/* Stats */}
+                    <div className="profile-stats">
+                        <div className="stat-item">
+                            <span className="stat-value">{posts.length}</span>
+                            <span className="stat-label">Posts</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-value">0</span>
+                            <span className="stat-label">Followers</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-value">0</span>
+                            <span className="stat-label">Following</span>
+                        </div>
+                    </div>
                 </div>
-                {!isOwnProfile && (
-                    <div className="profile-actions">
-                        <i onClick={openChat} className="bi bi-chat-dots" style={{ fontSize: '4vh' }}></i>
-                        <i onClick={openVideoCall} className="bi bi-camera-video" style={{ fontSize: '4vh' }}></i>
+
+                {/* Tabs */}
+                <div className="profile-tabs">
+                    <button
+                        className={`tab-btn ${activeTab === 'posts' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('posts')}
+                    >
+                        <i className="bi bi-grid-3x3"></i> Posts
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'saved' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('saved')}
+                    >
+                        <i className="bi bi-bookmark"></i> Saved
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'tagged' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('tagged')}
+                    >
+                        <i className="bi bi-person-badge"></i> Tagged
+                    </button>
+                </div>
+
+                {/* Content */}
+                {activeTab === 'posts' && (
+                    <div className="posts-list-view">
+                        {posts.length === 0 ? (
+                            <div className="no-posts">
+                                <i className="bi bi-camera"></i>
+                                <p>No posts yet</p>
+                            </div>
+                        ) : (
+                            posts.map((post) => (
+                                <PostCard
+                                    key={post._id}
+                                    post={{
+                                        ...post,
+                                        author: (post.author && post.author.userName) ? post.author : user
+                                    }}
+                                    userId={currentUserId}
+                                    onLike={handleLike}
+                                    onDelete={handleDelete}
+                                    onAddComment={handleAddComment}
+                                    commentInput={commentInput[post._id]}
+                                    setCommentInput={(value) => setCommentInput({ ...commentInput, [post._id]: value })}
+                                />
+                            ))
+                        )}
                     </div>
                 )}
-            </div>
 
-            <div className="profile-posts-section">
-                <h3>{isOwnProfile ? 'My Posts' : `${user.userName}'s Posts`}</h3>
-                {posts.length === 0 ? (
-                    <p className="no-posts">No posts yet.</p>
-                ) : (
-                    posts.map((post) => (
-                        <div key={post._id} className="post">
-                            <h3>{post.author && post.author.userName ? post.author.userName : 'Unknown'}</h3>
-                            <p>{post.content}</p>
-                            {post.file && (
-                                <div>
-                                    {post.file.includes(".mp4") ? (
-                                        <video width="320" height="240" controls>
-                                            <source src={`http://localhost:5000/uploads/${post.file}`} type="video/mp4" />
-                                            Your browser does not support the video tag.
-                                        </video>
-                                    ) : (
-                                        <img src={`http://localhost:5000/uploads/${post.file}`} alt="Post Media" />
-                                    )}
-                                </div>
-                            )}
-                            <div className="post-actions">
-                                <span>❤️ {post.likes ? post.likes.length : 0} Likes</span>
-                                <span>💬 {post.comments.length} Comments</span>
-                                {isOwnProfile && (
-                                    <i className="bi bi-trash3-fill" onClick={() => handleDelete(post._id)} style={{ color: 'red', marginLeft: 'auto', cursor: 'pointer' }}></i>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                {activeTab === 'saved' && (
+                    <div className="no-posts">
+                        <i className="bi bi-bookmark"></i>
+                        <p>No saved posts yet</p>
+                    </div>
+                )}
+
+                {activeTab === 'tagged' && (
+                    <div className="no-posts">
+                        <i className="bi bi-person-badge"></i>
+                        <p>No tagged posts yet</p>
+                    </div>
                 )}
             </div>
 
             {showChat && user && (
                 <Chat
                     otherUser={user}
-                    onClose={closeChat}
+                    onClose={() => setShowChat(false)}
                     onVideoCall={() => {
                         setShowChat(false);
                         setShowVideoCall(true);
@@ -167,7 +264,7 @@ function Profile() {
             )}
 
             {showVideoCall && user && (
-                <VideoCall otherUser={user} onClose={closeVideoCall} />
+                <VideoCall otherUser={user} onClose={() => setShowVideoCall(false)} />
             )}
         </div>
     );

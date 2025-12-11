@@ -1,72 +1,76 @@
-.skeleton-profile-header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 30px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    margin-bottom: 30px;
+/* SkeletonProfileHeader.css */
+
+.skeleton-profile-container {
+    width: 100%;
+    background-color: white;
+    padding-bottom: 2rem;
+}
+
+.skeleton-banner {
+    height: 8rem;
+    width: 100%;
+    background-color: #e2e8f0;
+}
+
+.skeleton-header-content {
+    padding: 0 1rem;
+    position: relative;
+}
+
+.skeleton-avatar-wrapper {
+    margin-top: -4rem;
+    margin-bottom: 1rem;
+    width: 8rem;
+    height: 8rem;
+    position: relative;
 }
 
 .skeleton-avatar-large {
-    width: 100px;
-    height: 100px;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    background-color: #e0e0e0;
+    border: 4px solid white;
+    background-color: #cbd5e1;
 }
 
 .skeleton-info {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    flex: 1;
+    gap: 0.5rem;
 }
 
 .skeleton-name {
-    height: 32px;
-    border-radius: 4px;
+    height: 1.5rem;
+    border-radius: 0.25rem;
 }
 
-.skeleton-email {
-    height: 18px;
-    border-radius: 4px;
+.skeleton-username {
+    height: 1rem;
+    border-radius: 0.25rem;
 }
 
-.skeleton-date {
-    height: 14px;
-    border-radius: 4px;
+.skeleton-bio {
+    height: 1rem;
+    border-radius: 0.25rem;
+    margin-top: 0.5rem;
 }
 
-/* Bootstrap Placeholder Styles (reused if not globally available) */
+/* Bootstrap placeholder animation override if needed */
 .placeholder {
     display: inline-block;
     min-height: 1em;
     vertical-align: middle;
     cursor: wait;
     background-color: currentcolor;
-    opacity: 0.5;
+    opacity: .5;
 }
 
-.placeholder.col-4 {
-    width: 33.33%;
-}
-
-.placeholder.col-5 {
-    width: 41.66%;
-}
-
-.placeholder.col-6 {
-    width: 50%;
-}
-
-/* Glow Animation */
 .placeholder-glow .placeholder {
     animation: placeholder-glow 2s ease-in-out infinite;
 }
 
 @keyframes placeholder-glow {
     50% {
-        opacity: 0.2;
+        opacity: .2;
     }
 }

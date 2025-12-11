@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Peer from 'simple-peer';
+import axios from 'axios';
 import { useSocket } from '../contexts/SocketContext';
 import './VideoCall.css';
 
@@ -16,6 +17,7 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
     const myVideo = useRef();
     const userVideo = useRef();
     const connectionRef = useRef();
+    const startTime = useRef(null);
     const { socket } = useSocket();
     const currentUserId = localStorage.getItem('userId');
     const currentUserName = localStorage.getItem('userName');
@@ -25,6 +27,8 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
         _id: incomingCallData.from,
         userName: incomingCallData.name
     } : null);
+
+    const isInitiator = !incomingCallData;
 
     useEffect(() => {
         // Get user media
@@ -49,12 +53,13 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
 
             socket.on('call-accepted', (signal) => {
                 setCallAccepted(true);
+                startTime.current = Date.now();
                 connectionRef.current.signal(signal);
             });
 
             socket.on('call-rejected', () => {
                 alert('Call was rejected');
-                endCall();
+                endCall('rejected');
             });
 
             socket.on('call-ended', () => {
@@ -138,7 +143,7 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
         setReceivingCall(false);
     };
 
-    const endCall = () => {
+    const endCall = async (reason = '') => {
         setCallEnded(true);
         if (connectionRef.current) {
             connectionRef.current.destroy();
@@ -147,6 +152,29 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
             stream.getTracks().forEach(track => track.stop());
         }
         socket.emit('end-call', { to: targetUser._id });
+
+        // Save call history if I am the initiator
+        if (isInitiator) {
+            const duration = startTime.current ? (Date.now() - startTime.current) / 1000 : 0;
+            let status = 'missed';
+            if (callAccepted) status = 'completed';
+            if (reason === 'rejected') status = 'rejected';
+
+            try {
+                const token = localStorage.getItem('token');
+                await axios.post('http://localhost:5000/api/calls', {
+                    receiverId: targetUser._id,
+                    type: 'video', // Defaulting to video for now
+                    status,
+                    duration
+                }, {
+                    headers: { Authorization: token }
+                });
+            } catch (err) {
+                console.error('Error saving call history:', err);
+            }
+        }
+
         onClose();
     };
 
@@ -174,7 +202,7 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
         <div className="video-call-container">
             <div className="video-call-header">
                 <h3>{targetUser?.userName}</h3>
-                <button onClick={endCall} className="close-call-btn">✕</button>
+                <button onClick={() => endCall()} className="close-call-btn">✕</button>
             </div>
 
             <div className="videos-container">
@@ -240,7 +268,7 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
                         >
                             {isVideoOff ? '📹' : '📷'}
                         </button>
-                        <button onClick={endCall} className="control-btn end-btn">
+                        <button onClick={() => endCall()} className="control-btn end-btn">
                             📞 End Call
                         </button>
                     </div>

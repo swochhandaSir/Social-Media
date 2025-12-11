@@ -3,7 +3,7 @@ import './SkeletonPost.css';
 
 const SkeletonPost = () => {
     return (
-        <div className="post skeleton-post" aria-hidden="true">
+        <div className="post-card skeleton-post" aria-hidden="true">
             <div className="post-header placeholder-glow">
                 <span className="placeholder col-4"></span>
             </div>
