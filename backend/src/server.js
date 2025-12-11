@@ -14,6 +14,7 @@ const User = require('./models/Users');
 const Post = require('./models/Post');
 const Comment = require('./models/Comment');
 const Message = require('./models/Message');
+const Call = require('./models/Call');
 const { initializeIndex, searchUsers, indexUser } = require('./config/elasticsearch');
 
 const fs = require('fs');
@@ -184,6 +185,7 @@ app.get('/api/users/profile/:userId', authMiddleware, async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
         const posts = await Post.find({ author: userId })
+            .populate('author', 'userName')
             .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } })
             .sort({ createdAt: -1 });
         res.json({ user, posts });
@@ -318,6 +320,45 @@ app.get('/api/conversations', authMiddleware, async (req, res) => {
         res.json(conversations);
     } catch (err) {
         console.error('error fetching conversations', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get call history
+app.get('/api/calls', authMiddleware, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const calls = await Call.find({
+            $or: [{ caller: userId }, { receiver: userId }]
+        })
+            .populate('caller', 'userName')
+            .populate('receiver', 'userName')
+            .sort({ createdAt: -1 });
+        res.json(calls);
+    } catch (err) {
+        console.error('error fetching calls', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Save a call record
+app.post('/api/calls', authMiddleware, async (req, res) => {
+    try {
+        const { receiverId, type, status, duration } = req.body;
+        const callerId = req.user.userId;
+
+        const call = new Call({
+            caller: callerId,
+            receiver: receiverId,
+            type,
+            status,
+            duration
+        });
+
+        await call.save();
+        res.status(201).json(call);
+    } catch (err) {
+        console.error('error saving call', err);
         res.status(500).json({ error: err.message });
     }
 });
