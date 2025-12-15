@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import VideoCall from './VideoCall';
 import './Calls.css';
 
 function Calls() {
@@ -8,6 +9,8 @@ function Calls() {
     const [contacts, setContacts] = useState([]);
     const [callHistory, setCallHistory] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showVideoCall, setShowVideoCall] = useState(false);
+    const [activeCallUser, setActiveCallUser] = useState(null);
     const currentUserId = localStorage.getItem('userId');
 
     useEffect(() => {
@@ -23,7 +26,6 @@ function Calls() {
                 setCallHistory(callsRes.data);
 
                 // Fetch Contacts (All users for now, filtered by search)
-                // Ideally this should be a friends list
                 const usersRes = await axios.get(`http://localhost:5000/api/users/search?q=${searchTerm || 'a'}`,
                     {
                         headers: { Authorization: token }
@@ -38,13 +40,19 @@ function Calls() {
         };
 
         fetchData();
-    }, [searchTerm, currentUserId]); // Re-fetch when search term changes
+    }, [searchTerm, currentUserId]);
 
     const handleStartCall = (contact, type) => {
         console.log(`Starting ${type} call with ${contact.userName}`);
-        // In a real app, this would trigger the VideoCall component
-        // For now, we just log it. The VideoCall component is triggered via Chat or Profile usually.
-        alert(`Please go to the user's profile or chat to start a call.`);
+        setActiveCallUser(contact);
+        setShowVideoCall(true);
+    };
+
+    const handleCloseCall = () => {
+        setShowVideoCall(false);
+        setActiveCallUser(null);
+        // Refresh call history after call ends
+        setSearchTerm(prev => prev); // Trigger re-fetch or call fetchData directly if extracted
     };
 
     const formatDuration = (seconds) => {
@@ -104,7 +112,6 @@ function Calls() {
                                         <div className="avatar-image">
                                             {contact.userName.charAt(0).toUpperCase()}
                                         </div>
-                                        {/* Online status would require socket integration here */}
                                     </div>
                                     <div className="info-container">
                                         <h3 className="contact-name">{contact.userName}</h3>
@@ -186,6 +193,13 @@ function Calls() {
                         )}
                     </div>
                 </div>
+            )}
+
+            {showVideoCall && activeCallUser && (
+                <VideoCall
+                    otherUser={activeCallUser}
+                    onClose={handleCloseCall}
+                />
             )}
         </div>
     );
