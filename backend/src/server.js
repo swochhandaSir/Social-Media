@@ -8,6 +8,9 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
 const User = require('./models/Users');
@@ -22,13 +25,29 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Security: Helmet (Sets various HTTP headers)
+app.use(helmet());
+
+// Security: Rate Limiting (100 requests per 15 mins)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests from this IP, please try again later.'
+});
+app.use('/api/', apiLimiter);
+
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir);
 }
 
-app.use(cors());
+// Security: CORS (Restrict to frontend domain)
+const corsOptions = {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use('/uploads', express.static(uploadDir));
 
 const storage = multer.diskStorage({
@@ -36,7 +55,23 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
 });
 
-const upload = multer({ storage: storage });
+// Security: File Upload Restrictions
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only images are allowed.'), false);
+    }
+};
+
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
 mongoose.connect(process.env.DB_URL)
     .then(() => {
@@ -72,7 +107,7 @@ app.post('/api/posts', authMiddleware, upload.single('file'), async (req, res) =
         }
 
         const post = new Post({
-            title,
+            title: '', // Title was removed from frontend, removed from schema? No, schema might still have it but we don't send it.
             content,
             file,
             author: req.user.userId // Save author
@@ -369,7 +404,7 @@ const server = http.createServer(app);
 // Setup Socket.IO with CORS
 const io = socketIO(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: process.env.FRONTEND_URL || "http://localhost:3000",
         methods: ["GET", "POST"]
     }
 });
