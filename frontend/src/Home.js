@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { API_URL } from "./config";
 import SkeletonPost from "./components/SkeletonPost";
 import PostCard from "./components/PostCard";
 import "./Home.css";
@@ -13,7 +14,7 @@ function Home() {
     useEffect(() => {
         setLoading(true);
         axios
-            .get("http://localhost:5000/api/posts")
+            .get("${API_URL}/api/posts")
             .then((response) => {
                 setPosts(response.data);
                 setLoading(false);
@@ -27,7 +28,7 @@ function Home() {
     const handleLike = (postId) => {
         const token = localStorage.getItem('token');
         axios
-            .post(`http://localhost:5000/api/posts/like/${postId}`, {}, {
+            .post(`${API_URL}/api/posts/like/${postId}`, {}, {
                 headers: { 'Authorization': token }
             })
             .then((response) => {
@@ -43,7 +44,7 @@ function Home() {
         if (!window.confirm("Are you sure you want to delete this post?")) return;
         const token = localStorage.getItem('token');
         axios
-            .delete(`http://localhost:5000/api/posts/${postId}`, {
+            .delete(`${API_URL}/api/posts/${postId}`, {
                 headers: { 'Authorization': token }
             })
             .then(() => {
@@ -56,7 +57,7 @@ function Home() {
         if (!commentText) return;
         const token = localStorage.getItem('token');
         axios
-            .post(`http://localhost:5000/api/posts/comment/${postId}`, {
+            .post(`${API_URL}/api/posts/comment/${postId}`, {
                 text: commentText,
             }, {
                 headers: { 'Authorization': token }

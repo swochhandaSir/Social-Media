@@ -1,0 +1,5 @@
+node_modules/
+package-lock.json
+ELASTICSEARCH_SETUP.md
+WEBRTC_WEBSOCKET_GUIDE.md
+DEPLOYMENT.md

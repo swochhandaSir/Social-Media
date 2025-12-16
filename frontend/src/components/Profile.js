@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config';
 import SkeletonProfileHeader from './SkeletonProfileHeader';
 import PostCard from './PostCard';
 import Chat from './Chat';
@@ -29,7 +30,7 @@ function Profile() {
             setLoading(true);
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get(`http://localhost:5000/api/users/profile/${targetUserId}`, {
+                const res = await axios.get(`${API_URL}/api/users/profile/${targetUserId}`, {
                     headers: { Authorization: token }
                 });
                 setUser(res.data.user);
@@ -49,7 +50,7 @@ function Profile() {
     const handleLike = (postId) => {
         const token = localStorage.getItem('token');
         axios
-            .post(`http://localhost:5000/api/posts/like/${postId}`, {}, {
+            .post(`${API_URL}/api/posts/like/${postId}`, {}, {
                 headers: { 'Authorization': token }
             })
             .then((response) => {
@@ -65,7 +66,7 @@ function Profile() {
         if (!window.confirm("Are you sure you want to delete this post?")) return;
         const token = localStorage.getItem('token');
         axios
-            .delete(`http://localhost:5000/api/posts/${postId}`, {
+            .delete(`${API_URL}/api/posts/${postId}`, {
                 headers: { 'Authorization': token }
             })
             .then(() => {
@@ -78,7 +79,7 @@ function Profile() {
         if (!commentText) return;
         const token = localStorage.getItem('token');
         axios
-            .post(`http://localhost:5000/api/posts/comment/${postId}`, {
+            .post(`${API_URL}/api/posts/comment/${postId}`, {
                 text: commentText,
             }, {
                 headers: { 'Authorization': token }

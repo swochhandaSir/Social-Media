@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 import Chat from './Chat';
 import VideoCall from './VideoCall';
 import SkeletonConversation from './SkeletonConversation';
@@ -34,7 +35,7 @@ function Messages() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/conversations', {
+            const response = await axios.get('${API_URL}/api/conversations', {
                 headers: { 'Authorization': token }
             });
             setConversations(response.data);

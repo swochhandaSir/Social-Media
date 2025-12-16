@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import io from 'socket.io-client';
+import { API_URL } from '../config';
 
 const SocketContext = createContext();
 
@@ -13,7 +14,7 @@ export const SocketProvider = ({ children }) => {
         const userId = localStorage.getItem('userId');
 
         if (userId) {
-            const newSocket = io('http://localhost:5000');
+            const newSocket = io(API_URL);
 
             newSocket.on('connect', () => {
                 console.log('Connected to socket server');

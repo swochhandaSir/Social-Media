@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 import { useSocket } from '../contexts/SocketContext';
 import './Chat.css';
 
@@ -38,7 +39,7 @@ function Chat({ otherUser, onClose, onVideoCall }) {
     const loadMessages = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:5000/api/messages/${otherUser._id}`, {
+            const response = await axios.get(`${API_URL}/api/messages/${otherUser._id}`, {
                 headers: { 'Authorization': token }
             });
             setMessages(response.data);
@@ -50,7 +51,7 @@ function Chat({ otherUser, onClose, onVideoCall }) {
     const markAsRead = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://localhost:5000/api/messages/read/${otherUser._id}`, {}, {
+            await axios.put(`${API_URL}/api/messages/read/${otherUser._id}`, {}, {
                 headers: { 'Authorization': token }
             });
         } catch (error) {

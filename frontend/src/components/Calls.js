@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../config';
 import VideoCall from './VideoCall';
 import './Calls.css';
 
@@ -20,13 +21,13 @@ function Calls() {
                 const token = localStorage.getItem('token');
 
                 // Fetch Call History
-                const callsRes = await axios.get('http://localhost:5000/api/calls', {
+                const callsRes = await axios.get('${API_URL}/api/calls', {
                     headers: { Authorization: token }
                 });
                 setCallHistory(callsRes.data);
 
                 // Fetch Contacts (All users for now, filtered by search)
-                const usersRes = await axios.get(`http://localhost:5000/api/users/search?q=${searchTerm || 'a'}`,
+                const usersRes = await axios.get(`${API_URL}/api/users/search?q=${searchTerm || 'a'}`,
                     {
                         headers: { Authorization: token }
                     });

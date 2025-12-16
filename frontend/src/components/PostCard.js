@@ -1,4 +1,5 @@
 import React from 'react';
+import { API_URL } from '../config';
 import '../Home.css'; // Reusing Home.css for post styles
 
 const PostCard = ({
@@ -53,11 +54,11 @@ const PostCard = ({
                 <div className="post-media">
                     {post.file.includes(".mp4") ? (
                         <video controls>
-                            <source src={`http://localhost:5000/uploads/${post.file}`} type="video/mp4" />
+                            <source src={`${API_URL}/uploads/${post.file}`} type="video/mp4" />
                             Your browser does not support the video tag.
                         </video>
                     ) : (
-                        <img src={`http://localhost:5000/uploads/${post.file}`} alt="Post content" />
+                        <img src={`${API_URL}/uploads/${post.file}`} alt="Post content" />
                     )}
                 </div>
             )}

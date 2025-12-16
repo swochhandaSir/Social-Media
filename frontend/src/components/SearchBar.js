@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config';
 import './SearchBar.css';
 
 function SearchBar() {
@@ -27,7 +28,7 @@ function SearchBar() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:5000/api/users/search?q=${encodeURIComponent(query)}`, {
+            const response = await axios.get(`${API_URL}/api/users/search?q=${encodeURIComponent(query)}`, {
                 headers: { 'Authorization': token }
             });
             setResults(response.data);

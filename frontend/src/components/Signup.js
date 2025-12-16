@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config';
 import './Auth.css';
 
 function Signup() {
@@ -48,7 +49,7 @@ function Signup() {
 
         try {
             // Note: Backend expects 'userName', 'email', 'password'
-            await axios.post('http://localhost:5000/api/auth/signup', { userName: name, email, password });
+            await axios.post('${API_URL}/api/auth/signup', { userName: name, email, password });
             navigate('/login');
         } catch (err) {
             setErrors({ form: err.response?.data?.error || 'Signup failed' });

@@ -1,6 +1,7 @@
 // CreatePost.js
 import React, { useState } from "react";
 import axios from "axios";
+import { API_URL } from "./config";
 
 function CreatePost() {
     const [newPost, setNewPost] = useState({
@@ -33,7 +34,7 @@ function CreatePost() {
         };
 
         axios
-            .post("http://localhost:5000/api/posts", formData, config)
+            .post("${API_URL}/api/posts", formData, config)
             .then((response) => {
                 setNewPost({ title: "", content: "", file: null });
                 alert("Post created successfully!");
