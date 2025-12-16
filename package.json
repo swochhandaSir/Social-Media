@@ -1,6 +1,20 @@
 {
+  "name": "social-media-app",
+  "version": "1.0.0",
+  "description": "Social Media Application Root",
+  "scripts": {
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm start",
+    "client": "cd frontend && npm start",
+    "dev": "npm start",
+    "build": "cd frontend && npm run build"
+  },
   "dependencies": {
     "@elastic/elasticsearch": "^9.2.0",
     "bootstrap-icons": "^1.13.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
