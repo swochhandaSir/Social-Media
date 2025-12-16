@@ -86,25 +86,24 @@ function Home() {
                     <SkeletonPost />
                 </>
             ) : (
-            ): (
-                    Array.isArray(posts) && posts.length > 0 ? (
+                Array.isArray(posts) && posts.length > 0 ? (
                     posts.map((post) => (
-            <PostCard
-                key={post._id}
-                post={post}
-                userId={userId}
-                onLike={handleLike}
-                onDelete={handleDelete}
-                onAddComment={handleAddComment}
-                commentInput={commentInput[post._id]}
-                setCommentInput={(value) => setCommentInput({ ...commentInput, [post._id]: value })}
-            />
-            ))
-            ) : (
-            <div className="no-posts">
-                <p>No posts available.</p>
-            </div>
-            )
+                        <PostCard
+                            key={post._id}
+                            post={post}
+                            userId={userId}
+                            onLike={handleLike}
+                            onDelete={handleDelete}
+                            onAddComment={handleAddComment}
+                            commentInput={commentInput[post._id]}
+                            setCommentInput={(value) => setCommentInput({ ...commentInput, [post._id]: value })}
+                        />
+                    ))
+                ) : (
+                    <div className="no-posts">
+                        <p>No posts available.</p>
+                    </div>
+                )
             )}
         </div>
     );
