@@ -35,12 +35,18 @@ function Messages() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('${API_URL}/api/conversations', {
+            const response = await axios.get(`${API_URL}/api/conversations`, {
                 headers: { 'Authorization': token }
             });
-            setConversations(response.data);
+            if (Array.isArray(response.data)) {
+                setConversations(response.data);
+            } else {
+                console.error("API did not return an array:", response.data);
+                setConversations([]);
+            }
         } catch (error) {
             console.error('Error loading conversations:', error);
+            setConversations([]);
         } finally {
             setLoading(false);
         }

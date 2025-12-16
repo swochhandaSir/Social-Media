@@ -34,7 +34,7 @@ function CreatePost() {
         };
 
         axios
-            .post("${API_URL}/api/posts", formData, config)
+            .post(`${API_URL}/api/posts`, formData, config)
             .then((response) => {
                 setNewPost({ title: "", content: "", file: null });
                 alert("Post created successfully!");

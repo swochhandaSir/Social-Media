@@ -21,7 +21,7 @@ function Calls() {
                 const token = localStorage.getItem('token');
 
                 // Fetch Call History
-                const callsRes = await axios.get('${API_URL}/api/calls', {
+                const callsRes = await axios.get(`${API_URL}/api/calls`, {
                     headers: { Authorization: token }
                 });
                 setCallHistory(callsRes.data);
@@ -44,7 +44,7 @@ function Calls() {
     }, [searchTerm, currentUserId]);
 
     const handleStartCall = (contact, type) => {
-        console.log(`Starting ${type} call with ${contact.userName}`);
+        console.log(`Starting ${type} call with ${contact.userName} `);
         setActiveCallUser(contact);
         setShowVideoCall(true);
     };
@@ -60,7 +60,7 @@ function Calls() {
         if (!seconds) return '';
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        return `${mins}:${secs.toString().padStart(2, '0')} `;
     };
 
     const formatDate = (dateString) => {
@@ -79,13 +79,13 @@ function Calls() {
         <div className="calls-page">
             <div className="calls-tabs">
                 <button
-                    className={`tab-trigger ${activeTab === 'contacts' ? 'active' : ''}`}
+                    className={`tab - trigger ${activeTab === 'contacts' ? 'active' : ''} `}
                     onClick={() => setActiveTab('contacts')}
                 >
                     Contacts
                 </button>
                 <button
-                    className={`tab-trigger ${activeTab === 'history' ? 'active' : ''}`}
+                    className={`tab - trigger ${activeTab === 'history' ? 'active' : ''} `}
                     onClick={() => setActiveTab('history')}
                 >
                     Recent
@@ -163,7 +163,7 @@ function Calls() {
                                         <div className="info-container">
                                             <h3 className="contact-name">{otherUser?.userName || 'Unknown'}</h3>
                                             <div className="call-details">
-                                                <i className={`bi ${call.type === 'video' ? 'bi-camera-video' : 'bi-telephone'}`}></i>
+                                                <i className={`bi ${call.type === 'video' ? 'bi-camera-video' : 'bi-telephone'} `}></i>
                                                 <span className={call.status === 'missed' ? 'missed-call' : ''}>
                                                     {callTypeDisplay}
                                                 </span>
@@ -182,7 +182,7 @@ function Calls() {
                                                 className="action-icon-btn"
                                                 onClick={() => handleStartCall(otherUser, call.type)}
                                             >
-                                                <i className={`bi ${call.type === 'video' ? 'bi-camera-video' : 'bi-telephone'}`}></i>
+                                                <i className={`bi ${call.type === 'video' ? 'bi-camera-video' : 'bi-telephone'} `}></i>
                                             </button>
                                         </div>
                                     </div>
