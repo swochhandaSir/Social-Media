@@ -16,7 +16,12 @@ function Home() {
         axios
             .get("${API_URL}/api/posts")
             .then((response) => {
-                setPosts(response.data);
+                if (Array.isArray(response.data)) {
+                    setPosts(response.data);
+                } else {
+                    console.error("API did not return an array:", response.data);
+                    setPosts([]); // Fallback to empty array
+                }
                 setLoading(false);
             })
             .catch((error) => {
@@ -81,18 +86,25 @@ function Home() {
                     <SkeletonPost />
                 </>
             ) : (
-                posts.map((post) => (
-                    <PostCard
-                        key={post._id}
-                        post={post}
-                        userId={userId}
-                        onLike={handleLike}
-                        onDelete={handleDelete}
-                        onAddComment={handleAddComment}
-                        commentInput={commentInput[post._id]}
-                        setCommentInput={(value) => setCommentInput({ ...commentInput, [post._id]: value })}
-                    />
-                ))
+            ): (
+                    Array.isArray(posts) && posts.length > 0 ? (
+                    posts.map((post) => (
+            <PostCard
+                key={post._id}
+                post={post}
+                userId={userId}
+                onLike={handleLike}
+                onDelete={handleDelete}
+                onAddComment={handleAddComment}
+                commentInput={commentInput[post._id]}
+                setCommentInput={(value) => setCommentInput({ ...commentInput, [post._id]: value })}
+            />
+            ))
+            ) : (
+            <div className="no-posts">
+                <p>No posts available.</p>
+            </div>
+            )
             )}
         </div>
     );
