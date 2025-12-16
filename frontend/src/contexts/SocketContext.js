@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import io from 'socket.io-client';
-import { API_URL } from '../config';
+import { API_URL } from '../apiConfig';
 
 const SocketContext = createContext();
 

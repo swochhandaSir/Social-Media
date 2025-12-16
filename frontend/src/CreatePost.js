@@ -1,7 +1,7 @@
 // CreatePost.js
 import React, { useState } from "react";
 import axios from "axios";
-import { API_URL } from "./config";
+import { API_URL } from "./apiConfig";
 
 function CreatePost() {
     const [newPost, setNewPost] = useState({

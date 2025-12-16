@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_URL } from '../apiConfig';
 import { useSocket } from '../contexts/SocketContext';
 import './Chat.css';
 

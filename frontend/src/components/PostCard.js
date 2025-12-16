@@ -1,5 +1,5 @@
 import React from 'react';
-import { API_URL } from '../config';
+import { API_URL } from '../apiConfig';
 import '../Home.css'; // Reusing Home.css for post styles
 
 const PostCard = ({
