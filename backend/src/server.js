@@ -43,8 +43,26 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 // Security: CORS (Restrict to frontend domain)
+// Security: CORS (Restrict to frontend domain)
+const allowedOrigins = [
+    'http://localhost:3000',
+    'https://sabpara.vercel.app',
+    'https://sab-para.onrender.com',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
@@ -402,10 +420,19 @@ app.post('/api/calls', authMiddleware, async (req, res) => {
 const server = http.createServer(app);
 
 // Setup Socket.IO with CORS
+// Setup Socket.IO with CORS
 const io = socketIO(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
-        methods: ["GET", "POST"]
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
