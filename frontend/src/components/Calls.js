@@ -79,13 +79,13 @@ function Calls() {
         <div className="calls-page">
             <div className="calls-tabs">
                 <button
-                    className={`tab - trigger ${activeTab === 'contacts' ? 'active' : ''} `}
+                    className={`tab-trigger ${activeTab === 'contacts' ? 'active' : ''}`}
                     onClick={() => setActiveTab('contacts')}
                 >
                     Contacts
                 </button>
                 <button
-                    className={`tab - trigger ${activeTab === 'history' ? 'active' : ''} `}
+                    className={`tab-trigger ${activeTab === 'history' ? 'active' : ''}`}
                     onClick={() => setActiveTab('history')}
                 >
                     Recent
