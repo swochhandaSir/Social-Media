@@ -14,7 +14,7 @@ function Home() {
     useEffect(() => {
         setLoading(true);
         axios
-            .get("${API_URL}/api/posts")
+            .get(`${API_URL}/api/posts`)
             .then((response) => {
                 if (Array.isArray(response.data)) {
                     setPosts(response.data);
