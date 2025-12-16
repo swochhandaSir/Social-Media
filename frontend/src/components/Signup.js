@@ -49,7 +49,7 @@ function Signup() {
 
         try {
             // Note: Backend expects 'userName', 'email', 'password'
-            await axios.post('${API_URL}/api/auth/signup', { userName: name, email, password });
+            await axios.post(`${API_URL}/api/auth/signup`, { userName: name, email, password });
             navigate('/login');
         } catch (err) {
             setErrors({ form: err.response?.data?.error || 'Signup failed' });

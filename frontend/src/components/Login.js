@@ -33,7 +33,7 @@ function Login() {
         }
 
         try {
-            const res = await axios.post('${API_URL}/api/auth/login', { email, password });
+            const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('userId', res.data.userId);
             // Force a reload or update state to reflect login status in App.js
