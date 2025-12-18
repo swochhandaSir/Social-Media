@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Peer from 'simple-peer';
 import axios from 'axios';
+import { API_URL } from '../apiConfig';
 import { useSocket } from '../contexts/SocketContext';
 import './VideoCall.css';
 
@@ -92,7 +93,34 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
         const peer = new Peer({
             initiator: true,
             trickle: false,
-            stream: stream
+            stream: stream,
+            config: {
+                iceServers: [
+                    {
+                        urls: "stun:stun.relay.metered.ca:80",
+                    },
+                    {
+                        urls: "turn:global.relay.metered.ca:80",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                    {
+                        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                    {
+                        urls: "turn:global.relay.metered.ca:443",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                    {
+                        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                ]
+            }
         });
 
         peer.on('signal', (data) => {
@@ -120,7 +148,34 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
         const peer = new Peer({
             initiator: false,
             trickle: false,
-            stream: stream
+            stream: stream,
+            config: {
+                iceServers: [
+                    {
+                        urls: "stun:stun.relay.metered.ca:80",
+                    },
+                    {
+                        urls: "turn:global.relay.metered.ca:80",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                    {
+                        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                    {
+                        urls: "turn:global.relay.metered.ca:443",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                    {
+                        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+                        username: "3b692ac82963bb4296da8f28",
+                        credential: "zom+h9QF0zBfVa6p",
+                    },
+                ]
+            }
         });
 
         peer.on('signal', (data) => {
@@ -162,7 +217,9 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
 
             try {
                 const token = localStorage.getItem('token');
-                await axios.post('http://localhost:5000/api/calls', {
+                // Use API_URL from config
+                const { API_URL } = require('../apiConfig');
+                await axios.post(`${API_URL}/api/calls`, {
                     receiverId: targetUser._id,
                     type: 'video', // Defaulting to video for now
                     status,
