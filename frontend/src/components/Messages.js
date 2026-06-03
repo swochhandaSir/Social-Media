@@ -58,12 +58,6 @@ function Messages() {
         setShowVideoCall(false);
     };
 
-    const openVideoCall = (user) => {
-        setSelectedUser(user);
-        setShowVideoCall(true);
-        setShowChat(false);
-    };
-
     const closeChat = () => {
         setShowChat(false);
         setSelectedUser(null);

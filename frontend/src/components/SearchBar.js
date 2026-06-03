@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../apiConfig';
@@ -11,20 +11,7 @@ function SearchBar() {
     const [showResults, setShowResults] = useState(false);
     const navigate = useNavigate();
 
-    useEffect(() => {
-        const delaySearch = setTimeout(() => {
-            if (query.trim().length > 0) {
-                searchUsers();
-            } else {
-                setResults([]);
-                setShowResults(false);
-            }
-        }, 300); // Debounce search
-
-        return () => clearTimeout(delaySearch);
-    }, [query]);
-
-    const searchUsers = async () => {
+    const searchUsers = useCallback(async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -39,7 +26,20 @@ function SearchBar() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [query]);
+
+    useEffect(() => {
+        const delaySearch = setTimeout(() => {
+            if (query.trim().length > 0) {
+                searchUsers();
+            } else {
+                setResults([]);
+                setShowResults(false);
+            }
+        }, 300); // Debounce search
+
+        return () => clearTimeout(delaySearch);
+    }, [query, searchUsers]);
 
     const handleUserClick = (userId) => {
         navigate(`/profile/${userId}`);

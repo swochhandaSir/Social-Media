@@ -79,6 +79,8 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
                 socket.off('call-ended');
             }
         };
+    // Media setup and socket subscriptions are intentionally bound to this socket instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [socket]);
 
     const callUser = () => {
@@ -217,8 +219,6 @@ function VideoCall({ otherUser, onClose, incomingCallData }) {
 
             try {
                 const token = localStorage.getItem('token');
-                // Use API_URL from config
-                const { API_URL } = require('../apiConfig');
                 await axios.post(`${API_URL}/api/calls`, {
                     receiverId: targetUser._id,
                     type: 'video', // Defaulting to video for now

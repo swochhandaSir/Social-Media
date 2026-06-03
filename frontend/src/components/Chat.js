@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../apiConfig';
 import { useSocket } from '../contexts/SocketContext';
@@ -12,6 +12,51 @@ function Chat({ otherUser, onClose, onVideoCall }) {
     const typingTimeoutRef = useRef(null);
     const { socket } = useSocket();
     const currentUserId = localStorage.getItem('userId');
+
+    const loadMessages = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/api/messages/${otherUser._id}`, {
+                headers: { 'Authorization': token }
+            });
+            setMessages(response.data);
+        } catch (error) {
+            console.error('Error loading messages:', error);
+        }
+    }, [otherUser._id]);
+
+    const markAsRead = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`${API_URL}/api/messages/read/${otherUser._id}`, {}, {
+                headers: { 'Authorization': token }
+            });
+        } catch (error) {
+            console.error('Error marking messages as read:', error);
+        }
+    }, [otherUser._id]);
+
+    const handleReceiveMessage = useCallback((message) => {
+        if (message.sender._id === otherUser._id || message.sender === otherUser._id) {
+            setMessages(prev => [...prev, message]);
+            markAsRead();
+        }
+    }, [markAsRead, otherUser._id]);
+
+    const handleMessageSent = useCallback((message) => {
+        // Message already added optimistically, just update with server version
+        setMessages(prev => {
+            const filtered = prev.filter(m => !m.tempId);
+            return [...filtered, message];
+        });
+    }, []);
+
+    const handleUserTyping = useCallback((data) => {
+        if (data.from === otherUser._id) {
+            setIsTyping(true);
+            setTimeout(() => setIsTyping(false), 3000);
+        }
+    }, [otherUser._id]);
 
     useEffect(() => {
         loadMessages();
@@ -30,56 +75,11 @@ function Chat({ otherUser, onClose, onVideoCall }) {
                 socket.off('user-typing', handleUserTyping);
             }
         };
-    }, [socket, otherUser]);
+    }, [socket, loadMessages, markAsRead, handleReceiveMessage, handleMessageSent, handleUserTyping]);
 
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
-
-    const loadMessages = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/api/messages/${otherUser._id}`, {
-                headers: { 'Authorization': token }
-            });
-            setMessages(response.data);
-        } catch (error) {
-            console.error('Error loading messages:', error);
-        }
-    };
-
-    const markAsRead = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.put(`${API_URL}/api/messages/read/${otherUser._id}`, {}, {
-                headers: { 'Authorization': token }
-            });
-        } catch (error) {
-            console.error('Error marking messages as read:', error);
-        }
-    };
-
-    const handleReceiveMessage = (message) => {
-        if (message.sender._id === otherUser._id || message.sender === otherUser._id) {
-            setMessages(prev => [...prev, message]);
-            markAsRead();
-        }
-    };
-
-    const handleMessageSent = (message) => {
-        // Message already added optimistically, just update with server version
-        setMessages(prev => {
-            const filtered = prev.filter(m => !m.tempId);
-            return [...filtered, message];
-        });
-    };
-
-    const handleUserTyping = (data) => {
-        if (data.from === otherUser._id) {
-            setIsTyping(true);
-            setTimeout(() => setIsTyping(false), 3000);
-        }
-    };
 
     const sendMessage = (e) => {
         e.preventDefault();
