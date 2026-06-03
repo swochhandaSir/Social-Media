@@ -21,6 +21,7 @@ const Comment = require('./models/Comment');
 const Message = require('./models/Message');
 const Call = require('./models/Call');
 const { initializeIndex, searchUsers, indexUser } = require('./config/elasticsearch');
+const { deleteImage, hasCloudinaryConfig, uploadImageBuffer } = require('./config/cloudinary');
 
 const fs = require('fs');
 
@@ -77,11 +78,6 @@ app.use('/uploads', express.static(uploadDir, {
     }
 }));
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
-});
-
 // Security: File Upload Restrictions
 const fileFilter = (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -93,7 +89,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-    storage: storage,
+    storage: multer.memoryStorage(),
     fileFilter: fileFilter,
     limits: {
         fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -113,7 +109,7 @@ app.use('/api/auth', authRoutes);
 const POST_PAGE_LIMIT_DEFAULT = 20;
 const POST_PAGE_LIMIT_MAX = 50;
 const COMMENT_PREVIEW_LIMIT = 3;
-const POST_LIST_SELECT = 'content file likeCount commentCount author createdAt updatedAt';
+const POST_LIST_SELECT = 'content file filePublicId likeCount commentCount author createdAt updatedAt';
 
 const clampPostLimit = (limit) => {
     const parsed = Number.parseInt(limit, 10);
@@ -251,16 +247,28 @@ app.get('/api/posts', async (req, res) => {
 app.post('/api/posts', authMiddleware, upload.single('file'), async (req, res) => {
     try {
         const { content } = req.body;
-        const file = req.file ? req.file.filename : undefined;
+        let file;
+        let filePublicId;
 
         if (!content) {
             return res.status(400).json({ error: 'Content is required' });
+        }
+
+        if (req.file) {
+            if (!hasCloudinaryConfig) {
+                return res.status(500).json({ error: 'Cloudinary is not configured' });
+            }
+
+            const uploadResult = await uploadImageBuffer(req.file.buffer);
+            file = uploadResult.secure_url;
+            filePublicId = uploadResult.public_id;
         }
 
         const post = new Post({
             title: '', // Title was removed from frontend, removed from schema? No, schema might still have it but we don't send it.
             content,
             file,
+            filePublicId,
             likeCount: 0,
             commentCount: 0,
             author: req.user.userId // Save author
@@ -352,6 +360,9 @@ app.delete('/api/posts/:postId', authMiddleware, async (req, res) => {
         }
 
         await Post.findByIdAndDelete(postId);
+        await deleteImage(post.filePublicId).catch((error) => {
+            console.error('error deleting Cloudinary image', error);
+        });
         res.json({ message: 'Post deleted' });
     } catch (err) {
         console.error('error deleting post', err);

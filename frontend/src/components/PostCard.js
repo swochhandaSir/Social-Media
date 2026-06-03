@@ -30,6 +30,14 @@ const PostCard = ({
     const canDelete = authorId && (authorId === userId || authorId.toString() === userId);
     const likeCount = post.likeCount ?? (post.likes ? post.likes.length : 0);
     const commentCount = post.commentCount ?? (post.comments ? post.comments.length : 0);
+    const mediaUrl = useMemo(() => {
+        if (!post.file) {
+            return '';
+        }
+
+        return /^https?:\/\//i.test(post.file) ? post.file : `${API_URL}/uploads/${post.file}`;
+    }, [post.file]);
+    const isVideo = useMemo(() => /\.(mp4|webm|ogg)(\?|$)/i.test(mediaUrl), [mediaUrl]);
     const handleCommentFocus = useCallback(() => {
         commentInputRef.current?.focus();
     }, []);
@@ -61,15 +69,15 @@ const PostCard = ({
             />
 
             {/* Post Media */}
-            {post.file && (
+            {mediaUrl && (
                 <div className="post-media">
-                    {post.file.includes(".mp4") ? (
+                    {isVideo ? (
                         <video controls>
-                            <source src={`${API_URL}/uploads/${post.file}`} type="video/mp4" />
+                            <source src={mediaUrl} />
                             Your browser does not support the video tag.
                         </video>
                     ) : (
-                        <img src={`${API_URL}/uploads/${post.file}`} alt="Post content" />
+                        <img src={mediaUrl} alt="Post content" />
                     )}
                 </div>
             )}
