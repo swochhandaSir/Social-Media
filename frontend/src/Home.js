@@ -10,6 +10,30 @@ const PAGE_SIZE = 20;
 const ESTIMATED_POST_HEIGHT = 320;
 const LOADER_ROW_HEIGHT = 520;
 
+const normalizePostsResponse = (data) => {
+    if (Array.isArray(data)) {
+        return {
+            posts: data,
+            nextCursor: null,
+            hasMore: false
+        };
+    }
+
+    if (data && Array.isArray(data.posts)) {
+        return {
+            posts: data.posts,
+            nextCursor: data.nextCursor || null,
+            hasMore: Boolean(data.hasMore)
+        };
+    }
+
+    return {
+        posts: [],
+        nextCursor: null,
+        hasMore: false
+    };
+};
+
 function FeedRow({ index, style, data }) {
     const rowRef = useRef(null);
 
@@ -94,13 +118,11 @@ function Home() {
                 }
             });
 
-            const payloadPosts = Array.isArray(response.data)
-                ? response.data
-                : response.data.posts || [];
+            const payload = normalizePostsResponse(response.data);
 
-            setPosts((currentPosts) => append ? [...currentPosts, ...payloadPosts] : payloadPosts);
-            setNextCursor(response.data.nextCursor || null);
-            setHasMore(Boolean(response.data.hasMore));
+            setPosts((currentPosts) => append ? [...currentPosts, ...payload.posts] : payload.posts);
+            setNextCursor(payload.nextCursor);
+            setHasMore(payload.hasMore);
         } catch (error) {
             console.error("Error fetching posts:", error);
             if (!append) {

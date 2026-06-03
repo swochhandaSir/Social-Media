@@ -9,6 +9,8 @@ import VideoCall from './VideoCall';
 import { useSocket } from '../contexts/SocketContext';
 import './Profile.css';
 
+const normalizePosts = (value) => Array.isArray(value) ? value : [];
+
 function Profile() {
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -34,7 +36,7 @@ function Profile() {
                     headers: { Authorization: token }
                 });
                 setUser(res.data.user);
-                setPosts(res.data.posts);
+                setPosts(normalizePosts(res.data.posts));
             } catch (err) {
                 console.error("Error fetching profile:", err);
             } finally {
