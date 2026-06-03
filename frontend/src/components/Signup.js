@@ -12,10 +12,12 @@ function Signup() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [errors, setErrors] = useState({});
+    const [status, setStatus] = useState({ type: '', message: '' });
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setStatus({ type: '', message: '' });
         const newErrors = {};
 
         if (!name) {
@@ -50,9 +52,11 @@ function Signup() {
         try {
             // Note: Backend expects 'userName', 'email', 'password'
             await axios.post(`${API_URL}/api/auth/signup`, { userName: name, email, password });
-            navigate('/login');
+            setStatus({ type: 'success', message: 'Account created successfully! Redirecting to login...' });
+            setTimeout(() => navigate('/login'), 1200);
         } catch (err) {
-            setErrors({ form: err.response?.data?.error || 'Signup failed' });
+            const message = err.response?.data?.message || err.response?.data?.error || 'Signup failed. Please try again.';
+            setErrors({ form: message });
         }
     };
 
@@ -70,6 +74,11 @@ function Signup() {
 
                 {/* Signup Form */}
                 <form onSubmit={handleSubmit} className="auth-form">
+                    {status.message && (
+                        <div className={`status-message ${status.type}`}>
+                            {status.message}
+                        </div>
+                    )}
                     {errors.form && <div className="error-message" style={{ textAlign: 'center' }}>{errors.form}</div>}
 
                     <div className="form-group">

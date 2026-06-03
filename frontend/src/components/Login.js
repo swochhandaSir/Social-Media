@@ -9,10 +9,12 @@ function Login() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({});
+    const [status, setStatus] = useState({ type: '', message: '' });
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setStatus({ type: '', message: '' });
         const newErrors = {};
 
         if (!email) {
@@ -36,11 +38,13 @@ function Login() {
             const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('userId', res.data.userId);
+            localStorage.setItem('userName', res.data.userName);
             // Force a reload or update state to reflect login status in App.js
             // Ideally, use a context, but for now, reload works or navigate
             window.location.href = '/';
         } catch (err) {
-            setErrors({ form: err.response?.data?.error || 'Login failed' });
+            const message = err.response?.data?.message || err.response?.data?.error || 'Login failed. Please try again.';
+            setErrors({ form: message });
         }
     };
 
@@ -58,6 +62,11 @@ function Login() {
 
                 {/* Login Form */}
                 <form onSubmit={handleSubmit} className="auth-form">
+                    {status.message && (
+                        <div className={`status-message ${status.type}`}>
+                            {status.message}
+                        </div>
+                    )}
                     {errors.form && <div className="error-message" style={{ textAlign: 'center' }}>{errors.form}</div>}
 
                     <div className="form-group">

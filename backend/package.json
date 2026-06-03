@@ -5,7 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "setup": "npm install && npm update",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "perf:requests": "jest --config jest.perf.config.js --runInBand"
   },
   "keywords": [
     "express",
@@ -41,6 +42,11 @@
     "socket.io": "^4.8.1",
     "uuid": "^13.0.0",
     "validator": "^13.15.23"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "mongodb-memory-server": "^10.4.3",
+    "supertest": "^7.2.2"
   },
   "author": ""
 }

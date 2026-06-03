@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { memo, useCallback, useMemo, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { API_URL } from '../apiConfig';
 import '../Home.css'; // Reusing Home.css for post styles
 
@@ -11,12 +12,27 @@ const PostCard = ({
     commentInput,
     setCommentInput
 }) => {
-    const formatDate = (dateString) => {
+    const commentInputRef = useRef(null);
+    const formattedDate = useMemo(() => {
+        const dateString = post.createdAt;
         if (!dateString) return '';
         return new Date(dateString).toLocaleDateString(undefined, {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
         });
-    };
+    }, [post.createdAt]);
+
+    const sanitizedContent = useMemo(() => DOMPurify.sanitize(post.content || ''), [post.content]);
+    const isLiked = useMemo(
+        () => Boolean(post.likedByCurrentUser) || (Array.isArray(post.likes) && post.likes.some((like) => like?.toString() === userId)),
+        [post.likedByCurrentUser, post.likes, userId]
+    );
+    const authorId = post.author?._id || post.author;
+    const canDelete = authorId && (authorId === userId || authorId.toString() === userId);
+    const likeCount = post.likeCount ?? (post.likes ? post.likes.length : 0);
+    const commentCount = post.commentCount ?? (post.comments ? post.comments.length : 0);
+    const handleCommentFocus = useCallback(() => {
+        commentInputRef.current?.focus();
+    }, []);
 
     return (
         <div className="post-card">
@@ -28,26 +44,21 @@ const PostCard = ({
                     </div>
                     <div className="post-meta">
                         <span className="post-username">{post.author?.userName || 'Unknown'}</span>
-                        <span className="post-time">{formatDate(post.createdAt)}</span>
+                        <span className="post-time">{formattedDate}</span>
                     </div>
                 </div>
-                {(() => {
-                    const authorId = post.author?._id || post.author;
-                    if (authorId && (authorId === userId || authorId.toString() === userId)) {
-                        return (
-                            <button className="btn-ghost" onClick={() => onDelete(post._id)}>
-                                <i className="bi bi-trash3" style={{ color: '#ef4444' }}></i>
-                            </button>
-                        );
-                    }
-                    return null;
-                })()}
+                {canDelete && (
+                    <button className="btn-ghost" onClick={() => onDelete(post._id)}>
+                        <i className="bi bi-trash3" style={{ color: '#ef4444' }}></i>
+                    </button>
+                )}
             </div>
 
             {/* Post Content */}
-            <div className="post-content">
-                {post.content}
-            </div>
+            <div
+                className="post-content"
+                dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+            />
 
             {/* Post Media */}
             {post.file && (
@@ -65,22 +76,22 @@ const PostCard = ({
 
             {/* Post Stats */}
             <div className="post-stats">
-                <span>{post.likes ? post.likes.length : 0} likes</span>
-                <span>{post.comments ? post.comments.length : 0} comments</span>
+                <span>{likeCount} likes</span>
+                <span>{commentCount} comments</span>
             </div>
 
             {/* Post Actions */}
             <div className="post-actions">
                 <button
-                    className={`action-btn ${post.likes && post.likes.includes(userId) ? 'liked' : ''}`}
+                    className={`action-btn ${isLiked ? 'liked' : ''}`}
                     onClick={() => onLike(post._id)}
                 >
-                    <i className={`bi ${post.likes && post.likes.includes(userId) ? 'bi-heart-fill' : 'bi-heart'}`}></i>
+                    <i className={`bi ${isLiked ? 'bi-heart-fill' : 'bi-heart'}`}></i>
                     Like
                 </button>
                 <button
                     className="action-btn"
-                    onClick={() => document.getElementById(`comment-input-${post._id}`).focus()}
+                    onClick={handleCommentFocus}
                 >
                     <i className="bi bi-chat"></i>
                     Comment
@@ -106,7 +117,7 @@ const PostCard = ({
 
                 <div className="comment-input-group">
                     <input
-                        id={`comment-input-${post._id}`}
+                        ref={commentInputRef}
                         type="text"
                         placeholder="Write a comment..."
                         className="comment-input"
@@ -127,4 +138,4 @@ const PostCard = ({
     );
 };
 
-export default PostCard;
+export default memo(PostCard);

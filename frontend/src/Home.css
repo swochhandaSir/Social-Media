@@ -6,6 +6,20 @@
     padding-bottom: 2rem;
 }
 
+.virtual-feed {
+    overflow-x: hidden !important;
+}
+
+.feed-row,
+.feed-loader-row {
+    box-sizing: border-box;
+    padding-bottom: 1.5rem;
+}
+
+.feed-row .post-card {
+    margin-bottom: 0;
+}
+
 .post-card {
     background: white;
     border-radius: 0.75rem;
@@ -61,7 +75,29 @@
     font-size: 0.95rem;
     line-height: 1.5;
     color: var(--text-primary);
-    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.post-content p,
+.post-content ul,
+.post-content ol,
+.post-content blockquote {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+.post-content > :last-child {
+    margin-bottom: 0;
+}
+
+.post-content blockquote {
+    border-left: 3px solid var(--border-color);
+    color: var(--text-secondary);
+    padding-left: 0.75rem;
+}
+
+.post-content a {
+    color: var(--primary-color);
 }
 
 .post-media {

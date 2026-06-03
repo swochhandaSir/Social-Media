@@ -13,6 +13,8 @@ import PrivateRoute from './components/PrivateRoute';
 import SearchBar from './components/SearchBar';
 import { SocketProvider } from './contexts/SocketContext';
 import GlobalCallListener from './components/GlobalCallListener';
+import axios from 'axios';
+import { API_URL } from './apiConfig';
 import './App.css';
 import './AppLayout.css';
 
@@ -22,7 +24,13 @@ function AppContent() {
   const token = localStorage.getItem('token');
   const [showMobileSearch, setShowMobileSearch] = React.useState(false);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${API_URL}/api/auth/logout`);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+
     localStorage.removeItem('token');
     localStorage.removeItem('userId');
     localStorage.removeItem('userName');

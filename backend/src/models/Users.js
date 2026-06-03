@@ -22,6 +22,20 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: [6, "Password must be at least 6 characters long"],
     },
+    refreshTokens: [{
+        tokenHash: {
+            type: String,
+            required: true,
+        },
+        expiresAt: {
+            type: Date,
+            required: true,
+        },
+        createdAt: {
+            type: Date,
+            default: Date.now,
+        },
+    }],
     following: mongoose.Schema.Types.ObjectId,
     followers: mongoose.Schema.Types.ObjectId,
 });

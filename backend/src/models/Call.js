@@ -34,4 +34,7 @@ const callSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+callSchema.index({ caller: 1, createdAt: -1 });
+callSchema.index({ receiver: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Call', callSchema);

@@ -1,29 +1,48 @@
 // CreatePost.js
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import axios from "axios";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 import { API_URL } from "./apiConfig";
+import { useNavigate } from "react-router-dom";
 
 function CreatePost() {
+    const navigate = useNavigate();
+    const fileInputRef = useRef(null);
     const [newPost, setNewPost] = useState({
         title: "",
         content: "",
         file: null,
     });
+    const [status, setStatus] = useState({ type: '', message: '' });
 
-    const handleInputChange = (event) => {
-        const { name, value } = event.target;
-        setNewPost({ ...newPost, [name]: value });
+    const handleEditorChange = (data) => {
+        setNewPost((currentPost) => ({ ...currentPost, content: data }));
     };
 
     const handleFileChange = (event) => {
         setNewPost({ ...newPost, file: event.target.files[0] });
     };
 
-    const handlePostSubmit = () => {
+    const hasVisibleContent = (html) => {
+        const textOnly = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+        return textOnly.length > 0;
+    };
+
+    const handlePostSubmit = async () => {
+        setStatus({ type: '', message: '' });
+
+        if (!newPost.content || !hasVisibleContent(newPost.content)) {
+            setStatus({ type: 'error', message: 'Please add some content before posting.' });
+            return;
+        }
+
         const formData = new FormData();
         formData.append("title", newPost.title);
         formData.append("content", newPost.content);
-        formData.append("file", newPost.file);
+        if (newPost.file) {
+            formData.append("file", newPost.file);
+        }
 
         const token = localStorage.getItem('token');
         const config = {
@@ -33,32 +52,59 @@ function CreatePost() {
             }
         };
 
-        axios
-            .post(`${API_URL}/api/posts`, formData, config)
-            .then((response) => {
-                setNewPost({ title: "", content: "", file: null });
-                alert("Post created successfully!");
-            })
-            .catch((error) => console.error("Error creating post:", error));
+        try {
+            await axios.post(`${API_URL}/api/posts`, formData, config);
+            setNewPost({ title: "", content: "", file: null });
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+            setStatus({ type: 'success', message: 'Post created successfully!' });
+            navigate('/');
+        } catch (error) {
+            const message = error.response?.data?.error || 'Unable to create post. Please try again.';
+            setStatus({ type: 'error', message });
+        }
     };
 
     return (
         <div className="create-post">
             <h2>Create a Post</h2>
-            <input
+            {/* <input
                 type="text"
                 name="title"
                 placeholder="Title"
                 value={newPost.title}
                 onChange={handleInputChange}
-            />
-            <textarea
-                name="content"
-                placeholder="Content"
-                value={newPost.content}
-                onChange={handleInputChange}
-            ></textarea>
-            <input type="file" name="file" onChange={handleFileChange} />
+            /> */}
+            <div className="post-editor">
+                <CKEditor
+                    editor={ClassicEditor}
+                    data={newPost.content}
+                    config={{
+                        placeholder: "Write your post...",
+                        toolbar: [
+                            "heading",
+                            "|",
+                            "bold",
+                            "italic",
+                            "link",
+                            "bulletedList",
+                            "numberedList",
+                            "blockQuote",
+                            "|",
+                            "undo",
+                            "redo"
+                        ]
+                    }}
+                    onChange={(event, editor) => handleEditorChange(editor.getData())}
+                />
+            </div>
+            {status.message && (
+                <div className={`status-message ${status.type}`} style={{ marginBottom: '1rem' }}>
+                    {status.message}
+                </div>
+            )}
+            <input ref={fileInputRef} type="file" name="file" onChange={handleFileChange} />
             <button onClick={handlePostSubmit}>Post</button>
         </div>
     );

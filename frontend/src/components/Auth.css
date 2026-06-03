@@ -135,6 +135,27 @@
     margin-top: 0.25rem;
 }
 
+.status-message {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.status-message.success {
+    background-color: #dcfce7;
+    color: #14532d;
+    border: 1px solid #bbf7d0;
+}
+
+.status-message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
 .auth-button {
     width: 100%;
     padding: 0.625rem;

@@ -10,6 +10,8 @@ const multer = require('multer');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
@@ -26,12 +28,17 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security: Helmet (Sets various HTTP headers)
-app.use(helmet());
+app.use(helmet(
+    {
+        crossOriginResourcePolicy: false
+    }
+));
 
 // Security: Rate Limiting (100 requests per 15 mins)
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
+    skip: () => process.env.NODE_ENV === 'test',
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use('/api/', apiLimiter);
@@ -45,9 +52,6 @@ if (!fs.existsSync(uploadDir)) {
 // Security: CORS (Restrict to frontend domain)
 // Security: CORS (Restrict to frontend domain)
 const allowedOrigins = [
-    'http://localhost:3000',
-    'https://sabpara.vercel.app',
-    'https://sab-para.onrender.com',
     process.env.FRONTEND_URL
 ].filter(Boolean);
 
@@ -66,7 +70,12 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
-app.use('/uploads', express.static(uploadDir));
+app.use(cookieParser());
+app.use('/uploads', express.static(uploadDir, {
+    setHeaders: (res) => {
+        res.set('crossOriginResourcePolicy', 'cross-origin');
+    }
+}));
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
@@ -91,7 +100,7 @@ const upload = multer({
     }
 });
 
-mongoose.connect(process.env.DB_URL)
+const connectDatabase = () => mongoose.connect(process.env.DB_URL)
     .then(() => {
         console.log('MongoDB connected');
         initializeIndex().catch(err => console.error('Elasticsearch initialization error:', err));
@@ -101,14 +110,138 @@ mongoose.connect(process.env.DB_URL)
 app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
 
+const POST_PAGE_LIMIT_DEFAULT = 20;
+const POST_PAGE_LIMIT_MAX = 50;
+const COMMENT_PREVIEW_LIMIT = 3;
+const POST_LIST_SELECT = 'content file likeCount commentCount author createdAt updatedAt';
+
+const clampPostLimit = (limit) => {
+    const parsed = Number.parseInt(limit, 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+        return POST_PAGE_LIMIT_DEFAULT;
+    }
+    return Math.min(parsed, POST_PAGE_LIMIT_MAX);
+};
+
+const buildPostCursorFilter = (cursor) => {
+    if (!cursor) {
+        return {};
+    }
+
+    const [createdAtValue, id] = String(cursor).split('_');
+    const createdAt = new Date(createdAtValue);
+
+    if (Number.isNaN(createdAt.getTime()) || !mongoose.Types.ObjectId.isValid(id)) {
+        return {};
+    }
+
+    return {
+        $or: [
+            { createdAt: { $lt: createdAt } },
+            { createdAt, _id: { $lt: new mongoose.Types.ObjectId(id) } }
+        ]
+    };
+};
+
+const encodePostCursor = (post) => `${new Date(post.createdAt).toISOString()}_${post._id}`;
+
+const getRequestUserId = (req) => {
+    if (req.user?.userId) {
+        return req.user.userId;
+    }
+
+    const token = req.header('Authorization');
+    if (!token) {
+        return null;
+    }
+
+    try {
+        return jwt.verify(token, process.env.JWT_SECRET).userId;
+    } catch (err) {
+        return null;
+    }
+};
+
+const loadCommentPreviews = async (postIds) => {
+    const entries = await Promise.all(postIds.map(async (postId) => {
+        const comments = await Comment.find({ post: postId })
+            .sort({ createdAt: -1, _id: -1 })
+            .limit(COMMENT_PREVIEW_LIMIT)
+            .populate({ path: 'author', select: 'userName', options: { lean: true } })
+            .lean();
+
+        return [postId.toString(), comments.reverse()];
+    }));
+
+    return new Map(entries);
+};
+
+const loadLikedPostIds = async (postIds, userId) => {
+    if (!userId || postIds.length === 0) {
+        return new Set();
+    }
+
+    const likedPosts = await Post.find({ _id: { $in: postIds }, likes: userId })
+        .select('_id')
+        .lean();
+
+    return new Set(likedPosts.map((post) => post._id.toString()));
+};
+
+const serializePost = (post, { commentPreviewByPostId = new Map(), likedPostIds = new Set() } = {}) => ({
+    ...post,
+    comments: commentPreviewByPostId.get(post._id.toString()) || [],
+    likedByCurrentUser: likedPostIds.has(post._id.toString()),
+    likeCount: post.likeCount ?? 0,
+    commentCount: post.commentCount ?? 0,
+});
+
+const serializePostPage = async (posts, userId) => {
+    const postIds = posts.map((post) => post._id);
+    const [commentPreviewByPostId, likedPostIds] = await Promise.all([
+        loadCommentPreviews(postIds),
+        loadLikedPostIds(postIds, userId),
+    ]);
+
+    return posts.map((post) => serializePost(post, { commentPreviewByPostId, likedPostIds }));
+};
+
+const findSerializedPostById = async (postId, userId) => {
+    const post = await Post.findById(postId)
+        .select(POST_LIST_SELECT)
+        .populate({ path: 'author', select: 'userName', options: { lean: true } })
+        .lean();
+
+    if (!post) {
+        return null;
+    }
+
+    const [serializedPost] = await serializePostPage([post], userId);
+    return serializedPost;
+};
+
 // Get all posts
 app.get('/api/posts', async (req, res) => {
     try {
-        const posts = await Post.find()
-            .populate('author', 'userName')
-            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } })
-            .sort({ createdAt: -1 });
-        res.json(posts);
+        const userId = getRequestUserId(req);
+        const limit = clampPostLimit(req.query.limit);
+        const cursorFilter = buildPostCursorFilter(req.query.cursor);
+        const posts = await Post.find(cursorFilter)
+            .select(POST_LIST_SELECT)
+            .sort({ createdAt: -1, _id: -1 })
+            .limit(limit + 1)
+            .populate({ path: 'author', select: 'userName', options: { lean: true } })
+            .lean();
+
+        const hasMore = posts.length > limit;
+        const page = hasMore ? posts.slice(0, limit) : posts;
+        const nextCursor = hasMore ? encodePostCursor(page[page.length - 1]) : null;
+
+        res.json({
+            posts: await serializePostPage(page, userId),
+            nextCursor,
+            hasMore
+        });
     } catch (err) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -128,11 +261,14 @@ app.post('/api/posts', authMiddleware, upload.single('file'), async (req, res) =
             title: '', // Title was removed from frontend, removed from schema? No, schema might still have it but we don't send it.
             content,
             file,
+            likeCount: 0,
+            commentCount: 0,
             author: req.user.userId // Save author
         });
 
         await post.save();
-        res.status(201).json(post);
+        const createdPost = await findSerializedPostById(post._id, req.user.userId);
+        res.status(201).json(createdPost);
     } catch (err) {
         console.error('error creating post', err);
         res.status(500).json({ error: err.message });
@@ -144,26 +280,26 @@ app.post('/api/posts/like/:postId', authMiddleware, async (req, res) => {
     try {
         const postId = req.params.postId;
         const userId = req.user.userId;
-        const post = await Post.findById(postId)
-            .populate('author', 'userName')
-            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } });
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        const likedPost = await Post.findOneAndUpdate(
+            { _id: postId, likes: { $ne: userObjectId } },
+            { $addToSet: { likes: userObjectId }, $inc: { likeCount: 1 } },
+            { new: true }
+        ).select('_id');
 
-        if (!post) {
-            return res.status(404).json({ error: 'Post not found' });
+        if (!likedPost) {
+            const unlikedPost = await Post.findOneAndUpdate(
+                { _id: postId, likes: userObjectId },
+                { $pull: { likes: userObjectId }, $inc: { likeCount: -1 } },
+                { new: true }
+            ).select('_id');
+
+            if (!unlikedPost) {
+                return res.status(404).json({ error: 'Post not found' });
+            }
         }
 
-        // Check if user already liked the post
-        const likeIndex = post.likes.indexOf(userId);
-        if (likeIndex === -1) {
-            // User hasn't liked it, so add like
-            post.likes.push(userId);
-        } else {
-            // User already liked it, so remove like (unlike)
-            post.likes.splice(likeIndex, 1);
-        }
-
-        await post.save();
-        res.json(post);
+        res.json(await findSerializedPostById(postId, userId));
     } catch (err) {
         console.error('error liking post', err);
         res.status(500).json({ error: err.message });
@@ -177,29 +313,23 @@ app.post('/api/posts/comment/:postId', authMiddleware, async (req, res) => {
         const { text } = req.body;
         const userId = req.user.userId;
 
-        const post = await Post.findById(postId);
-        if (!post) {
+        if (!text || !text.trim()) {
+            return res.status(400).json({ error: 'Comment text is required' });
+        }
+
+        const postExists = await Post.exists({ _id: postId });
+        if (!postExists) {
             return res.status(404).json({ error: 'Post not found' });
         }
 
-        // Create new comment document
         const comment = new Comment({
-            text,
+            text: text.trim(),
             author: userId,
             post: postId
         });
         await comment.save();
-
-        // Add comment reference to post
-        post.comments.push(comment._id);
-        await post.save();
-
-        // Return populated post
-        const updatedPost = await Post.findById(postId)
-            .populate('author', 'userName')
-            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } });
-
-        res.json(updatedPost);
+        await Post.updateOne({ _id: postId }, { $inc: { commentCount: 1 } });
+        res.json(await findSerializedPostById(postId, userId));
     } catch (err) {
         console.error('error adding comment', err);
         res.status(500).json({ error: err.message });
@@ -233,15 +363,29 @@ app.delete('/api/posts/:postId', authMiddleware, async (req, res) => {
 app.get('/api/users/profile/:userId', authMiddleware, async (req, res) => {
     try {
         const userId = req.params.userId;
-        const user = await User.findById(userId).select('-password'); // Exclude password
+        const user = await User.findById(userId).select('-password').lean(); // Exclude password
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
-        const posts = await Post.find({ author: userId })
-            .populate('author', 'userName')
-            .populate({ path: 'comments', populate: { path: 'author', select: 'userName' } })
-            .sort({ createdAt: -1 });
-        res.json({ user, posts });
+
+        const limit = clampPostLimit(req.query.limit);
+        const cursorFilter = buildPostCursorFilter(req.query.cursor);
+        const postFilter = { author: userId, ...cursorFilter };
+        const posts = await Post.find(postFilter)
+            .select(POST_LIST_SELECT)
+            .sort({ createdAt: -1, _id: -1 })
+            .limit(limit + 1)
+            .populate({ path: 'author', select: 'userName', options: { lean: true } })
+            .lean();
+        const hasMore = posts.length > limit;
+        const page = hasMore ? posts.slice(0, limit) : posts;
+
+        res.json({
+            user,
+            posts: await serializePostPage(page, req.user.userId),
+            nextCursor: hasMore ? encodePostCursor(page[page.length - 1]) : null,
+            hasMore
+        });
     } catch (err) {
         console.error('error fetching profile', err);
         res.status(500).json({ error: err.message });
@@ -541,6 +685,12 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+    connectDatabase().then(() => {
+        server.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    });
+}
+
+module.exports = { app, server, connectDatabase };

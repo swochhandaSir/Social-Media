@@ -1,17 +1,33 @@
 const { Client } = require('@elastic/elasticsearch');
 
-const client = new Client({
-    node: 'https://ed9c847112704152aa69e2e5ac4bd313.us-central1.gcp.cloud.es.io:443',
-    auth: {
-        apiKey: process.env.ELASTICSEARCH_API_KEY
-    },
-});
+const elasticsearchNode = process.env.ELASTICSEARCH_NODE;
+const elasticsearchApiKey = process.env.ELASTICSEARCH_API_KEY;
+const index = process.env.ELASTICSEARCH_INDEX || 'users';
+const isElasticsearchConfigured = Boolean(elasticsearchNode && elasticsearchApiKey);
 
-const index = 'search-3qkj';
+const client = isElasticsearchConfigured
+    ? new Client({
+        node: elasticsearchNode,
+        auth: {
+            apiKey: elasticsearchApiKey
+        },
+    })
+    : null;
+
+function ensureElasticsearchConfigured() {
+    if (!client) {
+        throw new Error('Elasticsearch is not configured');
+    }
+}
 
 // Initialize Elasticsearch index with mapping
 async function initializeIndex() {
     try {
+        if (!isElasticsearchConfigured) {
+            console.log('Elasticsearch is not configured. User search will use MongoDB fallback.');
+            return;
+        }
+
         // Check if index exists
         const indexExists = await client.indices.exists({ index });
 
@@ -57,6 +73,8 @@ async function initializeIndex() {
 // Index a user document
 async function indexUser(user) {
     try {
+        ensureElasticsearchConfigured();
+
         const response = await client.index({
             index,
             id: user._id.toString(),
@@ -79,6 +97,8 @@ async function indexUser(user) {
 // Search for users
 async function searchUsers(query) {
     try {
+        ensureElasticsearchConfigured();
+
         const response = await client.search({
             index,
             body: {
@@ -106,6 +126,8 @@ async function searchUsers(query) {
 // Delete a user from index
 async function deleteUser(userId) {
     try {
+        ensureElasticsearchConfigured();
+
         await client.delete({
             index,
             id: userId.toString(),
@@ -122,6 +144,8 @@ async function deleteUser(userId) {
 // Bulk index all users
 async function bulkIndexUsers(users) {
     try {
+        ensureElasticsearchConfigured();
+
         const operations = users.flatMap(user => [
             { index: { _index: index, _id: user._id.toString() } },
             {
